@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { GoogleSignInCard } from "@/features/auth";
-import { auth } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
   title: "Sign in | LongformShorts AI",
 };
 
 export default async function SignInPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getCurrentSession();
 
   if (session) {
     redirect("/dashboard");

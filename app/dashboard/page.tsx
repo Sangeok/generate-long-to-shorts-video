@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { auth } from "@/lib/auth";
+import { getCurrentSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,29 +9,20 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session) {
-    redirect("/sign-in");
-  }
+  const session = await getCurrentSession();
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-6">
-      <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-6">
+      <header className="flex flex-col gap-4 border-b border-border pb-6">
         <div>
           <p className="eyebrow">Dashboard</p>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-foreground">
-            Welcome, {session.user.name}
+            Welcome, {session?.user.name}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {session.user.email}
+            {session?.user.email}
           </p>
         </div>
-        <Button nativeButton={false} render={<Link href="/" />} variant="outline">
-          Back to home
-        </Button>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -64,6 +51,6 @@ export default async function DashboardPage() {
           </p>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
