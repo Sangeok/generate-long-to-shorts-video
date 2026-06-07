@@ -1,16 +1,16 @@
 "use client";
 
-import * as React from "react";
 import { Loader2, LogIn } from "lucide-react";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
 export function GoogleSignInCard() {
-  const [isPending, startTransition] = React.useTransition();
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function signInWithGoogle() {
+  const signInWithGoogle = async () => {
     setErrorMessage(null);
 
     const { error } = await authClient.signIn.social({
@@ -22,13 +22,13 @@ export function GoogleSignInCard() {
     if (error) {
       setErrorMessage(error.message || "Google sign-in failed.");
     }
-  }
+  };
 
-  function handleSignIn() {
+  const handleSignIn = () => {
     startTransition(() => {
       void signInWithGoogle();
     });
-  }
+  };
 
   return (
     <section className="w-full max-w-md rounded-xl border border-border bg-card p-6">

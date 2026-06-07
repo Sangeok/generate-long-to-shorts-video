@@ -1,9 +1,9 @@
 "use client";
 
-import * as React from "react";
 import { LogIn, LogOut, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
@@ -14,38 +14,24 @@ interface AuthHeaderActionsProps {
 
 export function AuthHeaderActions({ mobile = false }: AuthHeaderActionsProps) {
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
-  const [isSigningOut, startSignOutTransition] = React.useTransition();
+  const { data: session } = authClient.useSession();
+  const [isSigningOut, startSignOutTransition] = useTransition();
+
   const buttonSize = mobile ? "default" : "sm";
   const fullWidthClassName = mobile ? "w-full" : undefined;
 
-  function handleSignOut() {
+  const handleSignOut = () => {
     startSignOutTransition(() => {
-      void authClient.signOut().then(() => {
-        router.push("/");
-        router.refresh();
+      void authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            router.replace("/");
+            router.refresh();
+          },
+        },
       });
     });
-  }
-
-  if (isPending) {
-    return (
-      <>
-        <Button
-          className={fullWidthClassName}
-          disabled
-          size={buttonSize}
-          variant={mobile ? "outline" : "ghost"}
-        >
-          <UserCircle />
-          Sign in
-        </Button>
-        <Button className={fullWidthClassName} disabled size={buttonSize}>
-          Start free
-        </Button>
-      </>
-    );
-  }
+  };
 
   if (session?.user) {
     return (
@@ -75,25 +61,14 @@ export function AuthHeaderActions({ mobile = false }: AuthHeaderActionsProps) {
   }
 
   return (
-    <>
-      <Button
-        className={fullWidthClassName}
-        nativeButton={false}
-        render={<Link href="/sign-in" />}
-        size={buttonSize}
-        variant={mobile ? "outline" : "ghost"}
-      >
-        <LogIn />
-        Sign in
-      </Button>
-      <Button
-        className={fullWidthClassName}
-        nativeButton={false}
-        render={<Link href="/sign-in" />}
-        size={buttonSize}
-      >
-        Start free
-      </Button>
-    </>
+    <Button
+      className={fullWidthClassName}
+      nativeButton={false}
+      render={<Link href="/sign-in" />}
+      size={buttonSize}
+    >
+      <LogIn />
+      Start free
+    </Button>
   );
 }

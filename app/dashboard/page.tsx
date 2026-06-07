@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { getCurrentSession } from "@/lib/auth-server";
+import { VideoUploader } from "./_components/video-uploader/video-uploader";
 
 export const dynamic = "force-dynamic";
 
@@ -10,47 +11,24 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const session = await getCurrentSession();
+  const firstName = session?.user.name?.split(" ")[0] ?? "there";
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-6">
-      <header className="flex flex-col gap-4 border-b border-border pb-6">
-        <div>
-          <p className="eyebrow">Dashboard</p>
-          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-foreground">
-            Welcome, {session?.user.name}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {session?.user.email}
-          </p>
-        </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 py-12 sm:px-6 sm:py-16">
+      <header className="max-w-2xl">
+        <p className="eyebrow">Welcome back, {firstName}</p>
+        <h1 className="mt-3 font-display text-4xl font-semibold leading-[1.02] tracking-tight text-foreground sm:text-5xl">
+          Upload a long video.
+          <br />
+          Get a reel of shorts.
+        </h1>
+        <p className="mt-4 text-base text-muted-foreground">
+          Drop a full episode, talk, or stream and we&apos;ll find the moments
+          worth posting — reframed and ready for vertical.
+        </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Clips
-          </p>
-          <p className="mt-3 font-display text-3xl font-semibold tracking-tight">
-            0
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Minutes
-          </p>
-          <p className="mt-3 font-display text-3xl font-semibold tracking-tight">
-            0
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Aspect
-          </p>
-          <p className="mt-3 font-display text-3xl font-semibold tracking-tight">
-            9:16
-          </p>
-        </div>
-      </section>
+      <VideoUploader />
     </div>
   );
 }

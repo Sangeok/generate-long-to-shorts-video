@@ -1,0 +1,183 @@
+import { Check, RotateCcw, UploadCloud } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+
+import type { UploadStatus, VideoMeta } from "./use-video-uploader";
+
+interface UploadControlPanelProps {
+  file: File | null;
+  meta: VideoMeta | null;
+  progress: number;
+  status: UploadStatus;
+  onCancelUpload: () => void;
+  onChooseDifferentFile: () => void;
+  onReset: () => void;
+  onUpload: () => void;
+}
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+  );
+  const value = bytes / 1024 ** i;
+  return `${value.toFixed(value >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
+};
+
+const formatDuration = (seconds: number) => {
+  if (!Number.isFinite(seconds)) return "--:--";
+  const total = Math.floor(seconds);
+  const minutes = Math.floor(total / 60);
+  const remainingSeconds = total % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const gcd = (a: number, b: number): number => {
+  return b === 0 ? a : gcd(b, a % b);
+};
+
+const formatAspect = (width: number, height: number) => {
+  if (!width || !height) return "--";
+  const divisor = gcd(width, height);
+  return `${width / divisor}:${height / divisor}`;
+};
+
+const getExtension = (file: File) => {
+  const fromName = file.name.includes(".")
+    ? file.name.split(".").pop()
+    : undefined;
+  const fromType = file.type.split("/")[1];
+  return (fromName ?? fromType ?? "video").toUpperCase();
+};
+
+const MetaCell = ({ label, value }: { label: string; value: string }) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="font-mono text-sm tabular-nums text-foreground">
+        {value}
+      </span>
+    </div>
+  );
+};
+
+export const UploadControlPanel = ({
+  file,
+  meta,
+  progress,
+  status,
+  onCancelUpload,
+  onChooseDifferentFile,
+  onReset,
+  onUpload,
+}: UploadControlPanelProps) => {
+  return (
+    <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5">
+      {status === "selected" && (
+        <>
+          <div>
+            <p className="eyebrow">Selected clip</p>
+            <p
+              className="mt-2 truncate font-display text-lg font-semibold tracking-tight"
+              title={file?.name}
+            >
+              {file?.name}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-y border-border py-4">
+            <MetaCell
+              label="Duration"
+              value={meta ? formatDuration(meta.duration) : "--:--"}
+            />
+            <MetaCell
+              label="Aspect"
+              value={meta ? formatAspect(meta.width, meta.height) : "--"}
+            />
+            <MetaCell label="Size" value={file ? formatBytes(file.size) : "--"} />
+            <MetaCell
+              label="Format"
+              value={file ? getExtension(file) : "--"}
+            />
+          </div>
+          <div className="mt-auto flex flex-col gap-2">
+            <Button type="button" size="lg" onClick={onUpload}>
+              <UploadCloud /> Upload video
+            </Button>
+            <Button type="button" variant="ghost" onClick={onChooseDifferentFile}>
+              Choose a different file
+            </Button>
+          </div>
+        </>
+      )}
+
+      {status === "uploading" && (
+        <>
+          <div>
+            <p className="eyebrow">Uploading</p>
+            <p
+              className="mt-2 truncate font-display text-lg font-semibold tracking-tight"
+              title={file?.name}
+            >
+              {file?.name}
+            </p>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-5xl font-semibold tabular-nums">
+              {Math.round(progress)}
+            </span>
+            <span className="font-mono text-sm text-muted-foreground">%</span>
+          </div>
+          <Progress value={progress} aria-label="Upload progress" />
+          <p className="font-mono text-xs tabular-nums text-muted-foreground">
+            {formatBytes((progress / 100) * (file?.size ?? 0))}
+            {" / "}
+            {formatBytes(file?.size ?? 0)}
+          </p>
+          <div className="mt-auto">
+            <Button type="button" variant="ghost" onClick={onCancelUpload}>
+              Cancel upload
+            </Button>
+          </div>
+        </>
+      )}
+
+      {status === "done" && (
+        <>
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
+              <Check className="size-4" />
+            </span>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground">
+              Upload complete
+            </p>
+          </div>
+          <p
+            className="truncate font-display text-lg font-semibold tracking-tight"
+            title={file?.name}
+          >
+            {file?.name}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Your video is ready to be clipped into shorts.
+          </p>
+          <div className="mt-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={onReset}
+              className="w-full"
+            >
+              <RotateCcw /> Upload another
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
