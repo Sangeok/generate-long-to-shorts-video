@@ -1,9 +1,9 @@
 import "server-only";
 
-import type { ProjectStatus } from "@/generated/prisma/client";
+import type { VideoStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
-interface CreateProjectInput {
+interface CreateVideoInput {
   id: string;
   userId: string;
   title: string;
@@ -16,8 +16,8 @@ interface CreateProjectInput {
   height?: number | null;
 }
 
-export function createProject(input: CreateProjectInput) {
-  return prisma.project.create({
+export function createVideo(input: CreateVideoInput) {
+  return prisma.video.create({
     data: {
       id: input.id,
       userId: input.userId,
@@ -34,46 +34,46 @@ export function createProject(input: CreateProjectInput) {
   });
 }
 
-export function getProjectForUser(projectId: string, userId: string) {
-  return prisma.project.findFirst({ where: { id: projectId, userId } });
+export function getVideoForUser(videoId: string, userId: string) {
+  return prisma.video.findFirst({ where: { id: videoId, userId } });
 }
 
-export function getProjectKey(projectId: string) {
-  return prisma.project.findUniqueOrThrow({
-    where: { id: projectId },
+export function getVideoKey(videoId: string) {
+  return prisma.video.findUniqueOrThrow({
+    where: { id: videoId },
     select: { s3Key: true },
   });
 }
 
-export function updateProjectStatus(projectId: string, status: ProjectStatus) {
-  return prisma.project.update({ where: { id: projectId }, data: { status } });
+export function updateVideoStatus(videoId: string, status: VideoStatus) {
+  return prisma.video.update({ where: { id: videoId }, data: { status } });
 }
 
 export function markReady(
-  projectId: string,
+  videoId: string,
   viewUrl: string,
   viewUrlExpiresAt: Date,
 ) {
-  return prisma.project.update({
-    where: { id: projectId },
+  return prisma.video.update({
+    where: { id: videoId },
     data: { status: "READY", viewUrl, viewUrlExpiresAt, error: null },
   });
 }
 
-export function markFailed(projectId: string, error: string) {
-  return prisma.project.update({
-    where: { id: projectId },
+export function markFailed(videoId: string, error: string) {
+  return prisma.video.update({
+    where: { id: videoId },
     data: { status: "FAILED", error },
   });
 }
 
 export function saveViewUrl(
-  projectId: string,
+  videoId: string,
   viewUrl: string,
   viewUrlExpiresAt: Date,
 ) {
-  return prisma.project.update({
-    where: { id: projectId },
+  return prisma.video.update({
+    where: { id: videoId },
     data: { viewUrl, viewUrlExpiresAt },
   });
 }

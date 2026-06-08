@@ -1,6 +1,6 @@
-import type { CreateProjectResponse } from "../types";
+import type { CreateVideoResponse } from "../types";
 
-export interface CreateProjectPayload {
+export interface CreateVideoPayload {
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -9,16 +9,16 @@ export interface CreateProjectPayload {
   height?: number | null;
 }
 
-export async function createProject(
-  payload: CreateProjectPayload,
-): Promise<CreateProjectResponse> {
-  const res = await fetch("/api/projects", {
+export async function createVideo(
+  payload: CreateVideoPayload,
+): Promise<CreateVideoResponse> {
+  const res = await fetch("/api/videos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error("Failed to create project");
+    throw new Error("Failed to create video");
   }
   return res.json();
 }

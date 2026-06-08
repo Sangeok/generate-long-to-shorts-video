@@ -1,14 +1,14 @@
 import "server-only";
 
 export {
-  createProject,
-  getProjectForUser,
-  getProjectKey,
+  createVideo,
+  getVideoForUser,
+  getVideoKey,
   markFailed,
   markReady,
   saveViewUrl,
-  updateProjectStatus,
-} from "./project-repository";
+  updateVideoStatus,
+} from "./video-repository";
 export {
   createUploadUrl,
   createViewUrl,

@@ -1,2 +1,2 @@
 export { VideoUploader } from "./components/video-uploader";
-export type { ProjectDTO, UploadPhase } from "./types";
+export type { UploadPhase, VideoDTO } from "./types";

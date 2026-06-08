@@ -1,6 +1,6 @@
 import { serve } from "inngest/next";
 
-import { processUploadedVideo } from "@/features/project/server";
+import { processUploadedVideo } from "@/features/video/server";
 import { inngest } from "@/lib/inngest";
 
 export const runtime = "nodejs";

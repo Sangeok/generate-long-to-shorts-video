@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { buildS3Key } from "@/features/project/s3-key";
-import { createProject, createUploadUrl } from "@/features/project/server";
+import { buildS3Key } from "@/features/video/s3-key";
+import { createVideo, createUploadUrl } from "@/features/video/server";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export const runtime = "nodejs";
 
-interface CreateProjectBody {
+interface CreateVideoBody {
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json()) as CreateProjectBody;
+  const body = (await request.json()) as CreateVideoBody;
   if (!body.filename || !body.contentType || !body.sizeBytes) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
@@ -33,11 +33,11 @@ export async function POST(request: Request) {
   }
 
   const userId = session.user.id;
-  const projectId = crypto.randomUUID();
-  const key = buildS3Key(userId, projectId, body.filename);
+  const videoId = crypto.randomUUID();
+  const key = buildS3Key(userId, videoId, body.filename);
 
-  await createProject({
-    id: projectId,
+  await createVideo({
+    id: videoId,
     userId,
     title: body.filename,
     originalFilename: body.filename,
@@ -51,5 +51,5 @@ export async function POST(request: Request) {
 
   const uploadUrl = await createUploadUrl(key, body.contentType);
 
-  return NextResponse.json({ projectId, uploadUrl, key });
+  return NextResponse.json({ videoId, uploadUrl, key });
 }

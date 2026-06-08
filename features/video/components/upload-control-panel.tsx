@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 import type { VideoMeta } from "../hooks/use-video-uploader";
-import type { ProjectDTO, UploadPhase } from "../types";
+import type { UploadPhase, VideoDTO } from "../types";
 
 interface UploadControlPanelProps {
   file: File | null;
   meta: VideoMeta | null;
   progress: number;
   phase: UploadPhase;
-  project: ProjectDTO | null;
+  video: VideoDTO | null;
   error: string | null;
   onChooseDifferentFile: () => void;
   onReset: () => void;
@@ -76,7 +76,7 @@ export const UploadControlPanel = ({
   meta,
   progress,
   phase,
-  project,
+  video,
   error,
   onChooseDifferentFile,
   onReset,
@@ -186,13 +186,13 @@ export const UploadControlPanel = ({
           </div>
           <p
             className="truncate font-display text-lg font-semibold tracking-tight"
-            title={project?.title}
+            title={video?.title}
           >
-            {project?.title}
+            {video?.title}
           </p>
-          {project?.viewUrl && (
+          {video?.viewUrl && (
             <a
-              href={project.viewUrl}
+              href={video.viewUrl}
               target="_blank"
               rel="noreferrer"
               className="group/link flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-3.5 py-3 transition-colors hover:border-primary/40 hover:bg-secondary/60"
@@ -202,7 +202,7 @@ export const UploadControlPanel = ({
                   Signed view URL
                 </span>
                 <span className="truncate font-mono text-xs text-foreground">
-                  {project.viewUrl}
+                  {video.viewUrl}
                 </span>
               </span>
               <ExternalLink className="size-4 shrink-0 text-muted-foreground transition-colors group-hover/link:text-primary" />

@@ -17,9 +17,9 @@ describe("sanitizeFilename", () => {
 });
 
 describe("buildS3Key", () => {
-  it("namespaces by user and project id", () => {
-    expect(buildS3Key("user_1", "proj_2", "Clip One.mp4")).toBe(
-      "uploads/user_1/proj_2/clip-one.mp4",
+  it("namespaces by user and video id", () => {
+    expect(buildS3Key("user_1", "vid_2", "Clip One.mp4")).toBe(
+      "uploads/user_1/vid_2/clip-one.mp4",
     );
   });
 });

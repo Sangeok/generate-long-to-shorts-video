@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getProjectForUser, updateProjectStatus } from "@/features/project/server";
+import { getVideoForUser, updateVideoStatus } from "@/features/video/server";
 import { getCurrentSession } from "@/lib/auth-server";
 import { inngest } from "@/lib/inngest";
 
@@ -16,21 +16,21 @@ export async function POST(
   }
 
   const { id } = await params;
-  const project = await getProjectForUser(id, session.user.id);
-  if (!project) {
+  const video = await getVideoForUser(id, session.user.id);
+  if (!video) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   // Only finalize an upload that is still in its pre-processing window. Guards
-  // against double-submits re-firing the pipeline on an already-processing/ready project.
-  if (project.status !== "PENDING" && project.status !== "UPLOADING") {
+  // against double-submits re-firing the pipeline on an already-processing/ready video.
+  if (video.status !== "PENDING" && video.status !== "UPLOADING") {
     return NextResponse.json({ ok: true, alreadyStarted: true });
   }
 
-  await updateProjectStatus(id, "UPLOADED");
+  await updateVideoStatus(id, "UPLOADED");
   await inngest.send({
-    name: "project/video.uploaded",
-    data: { projectId: id, userId: session.user.id },
+    name: "video/uploaded",
+    data: { videoId: id, userId: session.user.id },
   });
 
   return NextResponse.json({ ok: true });

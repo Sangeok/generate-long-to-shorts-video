@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@/generated/prisma/client";
+import type { VideoStatus } from "@/generated/prisma/client";
 
 export type UploadPhase =
   | "idle"
@@ -8,11 +8,11 @@ export type UploadPhase =
   | "ready"
   | "failed";
 
-export interface ProjectDTO {
+export interface VideoDTO {
   id: string;
   title: string;
   originalFilename: string;
-  status: ProjectStatus;
+  status: VideoStatus;
   sizeBytes: string;
   contentType: string;
   durationSeconds: number | null;
@@ -24,8 +24,8 @@ export interface ProjectDTO {
   updatedAt: string;
 }
 
-export interface CreateProjectResponse {
-  projectId: string;
+export interface CreateVideoResponse {
+  videoId: string;
   uploadUrl: string;
   key: string;
 }

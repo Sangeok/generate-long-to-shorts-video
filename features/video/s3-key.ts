@@ -11,8 +11,8 @@ export function sanitizeFilename(name: string): string {
 
 export function buildS3Key(
   userId: string,
-  projectId: string,
+  videoId: string,
   filename: string,
 ): string {
-  return `uploads/${userId}/${projectId}/${sanitizeFilename(filename)}`;
+  return `uploads/${userId}/${videoId}/${sanitizeFilename(filename)}`;
 }

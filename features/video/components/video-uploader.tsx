@@ -13,7 +13,7 @@ export const VideoUploader = () => {
     previewUrl,
     meta,
     progress,
-    project,
+    video,
     isDragging,
     error,
     openPicker,
@@ -48,7 +48,7 @@ export const VideoUploader = () => {
         <div className="grid gap-4 lg:grid-cols-[1.65fr_1fr]">
           <VideoPreview
             previewUrl={previewUrl}
-            viewUrl={project?.viewUrl ?? null}
+            viewUrl={video?.viewUrl ?? null}
             phase={phase}
             onLoadedMetadata={handleLoadedMetadata}
             onReset={reset}
@@ -58,7 +58,7 @@ export const VideoUploader = () => {
             meta={meta}
             progress={progress}
             phase={phase}
-            project={project}
+            video={video}
             error={error}
             onChooseDifferentFile={openPicker}
             onReset={reset}

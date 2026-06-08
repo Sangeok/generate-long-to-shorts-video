@@ -1,8 +1,8 @@
-import type { ProjectStatus } from "@/generated/prisma/client";
+import type { VideoStatus } from "@/generated/prisma/client";
 
 import type { UploadPhase } from "./types";
 
-export function mapStatusToPhase(status: ProjectStatus): UploadPhase {
+export function mapStatusToPhase(status: VideoStatus): UploadPhase {
   switch (status) {
     case "PENDING":
     case "UPLOADING":

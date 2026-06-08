@@ -3,16 +3,16 @@ import "server-only";
 import { videoUploadedEvent, inngest } from "@/lib/inngest";
 
 import {
-  getProjectKey,
-  markFailed,
-  markReady,
-  updateProjectStatus,
-} from "./project-repository";
-import {
   createViewUrl,
   getViewUrlTtlSeconds,
   objectExists,
 } from "./s3-presign";
+import {
+  getVideoKey,
+  markFailed,
+  markReady,
+  updateVideoStatus,
+} from "./video-repository";
 
 export const processUploadedVideo = inngest.createFunction(
   {
@@ -20,20 +20,20 @@ export const processUploadedVideo = inngest.createFunction(
     retries: 3,
     triggers: [{ event: videoUploadedEvent }],
     onFailure: async ({ event, error }) => {
-      const { projectId } = event.data.event.data;
-      await markFailed(projectId, error.message);
+      const { videoId } = event.data.event.data;
+      await markFailed(videoId, error.message);
     },
   },
   async ({ event, step }) => {
-    const { projectId } = event.data;
+    const { videoId } = event.data;
 
     await step.run("mark-processing", async () => {
-      await updateProjectStatus(projectId, "PROCESSING");
+      await updateVideoStatus(videoId, "PROCESSING");
     });
 
     const key = await step.run("load-key", async () => {
-      const project = await getProjectKey(projectId);
-      return project.s3Key;
+      const video = await getVideoKey(videoId);
+      return video.s3Key;
     });
 
     await step.run("verify-s3-object", async () => {
@@ -49,9 +49,9 @@ export const processUploadedVideo = inngest.createFunction(
 
     await step.run("finalize", async () => {
       const expiresAt = new Date(Date.now() + getViewUrlTtlSeconds() * 1000);
-      await markReady(projectId, viewUrl, expiresAt);
+      await markReady(videoId, viewUrl, expiresAt);
     });
 
-    return { projectId, viewUrl };
+    return { videoId, viewUrl };
   },
 );

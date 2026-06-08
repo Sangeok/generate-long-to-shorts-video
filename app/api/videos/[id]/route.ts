@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 
 import {
   createViewUrl,
-  getProjectForUser,
+  getVideoForUser,
   getViewUrlTtlSeconds,
   saveViewUrl,
-} from "@/features/project/server";
-import { serializeProject } from "@/features/project/serialize";
-import { isViewUrlExpired } from "@/features/project/status";
+} from "@/features/video/server";
+import { serializeVideo } from "@/features/video/serialize";
+import { isViewUrlExpired } from "@/features/video/status";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export const runtime = "nodejs";
@@ -22,19 +22,19 @@ export async function GET(
   }
 
   const { id } = await params;
-  let project = await getProjectForUser(id, session.user.id);
-  if (!project) {
+  let video = await getVideoForUser(id, session.user.id);
+  if (!video) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   if (
-    project.status === "READY" &&
-    isViewUrlExpired(project.viewUrlExpiresAt, new Date())
+    video.status === "READY" &&
+    isViewUrlExpired(video.viewUrlExpiresAt, new Date())
   ) {
-    const viewUrl = await createViewUrl(project.s3Key);
+    const viewUrl = await createViewUrl(video.s3Key);
     const expiresAt = new Date(Date.now() + getViewUrlTtlSeconds() * 1000);
-    project = await saveViewUrl(id, viewUrl, expiresAt);
+    video = await saveViewUrl(id, viewUrl, expiresAt);
   }
 
-  return NextResponse.json(serializeProject(project));
+  return NextResponse.json(serializeVideo(video));
 }

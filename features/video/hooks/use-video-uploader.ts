@@ -11,11 +11,11 @@ import {
 } from "react";
 
 import { completeUpload } from "../api/complete-upload";
-import { createProject } from "../api/create-project";
-import { getProject } from "../api/get-project";
+import { createVideo } from "../api/create-video";
+import { getVideo } from "../api/get-video";
 import { uploadToS3 } from "../api/upload-to-s3";
 import { mapStatusToPhase } from "../status";
-import type { ProjectDTO, UploadPhase } from "../types";
+import type { UploadPhase, VideoDTO } from "../types";
 
 export interface VideoMeta {
   duration: number;
@@ -37,7 +37,7 @@ export const useVideoUploader = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [progress, setProgress] = useState(0);
-  const [project, setProject] = useState<ProjectDTO | null>(null);
+  const [video, setVideo] = useState<VideoDTO | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +59,7 @@ export const useVideoUploader = () => {
     setError(null);
     setMeta(null);
     setProgress(0);
-    setProject(null);
+    setVideo(null);
     setFile(candidate);
     setPreviewUrl(URL.createObjectURL(candidate));
     setPhase("selected");
@@ -73,7 +73,7 @@ export const useVideoUploader = () => {
     setPreviewUrl(null);
     setMeta(null);
     setProgress(0);
-    setProject(null);
+    setVideo(null);
     setError(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -98,21 +98,21 @@ export const useVideoUploader = () => {
   };
 
   const handleLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>) => {
-    const video = event.currentTarget;
+    const element = event.currentTarget;
     setMeta({
-      duration: video.duration,
-      width: video.videoWidth,
-      height: video.videoHeight,
+      duration: element.duration,
+      width: element.videoWidth,
+      height: element.videoHeight,
     });
   };
 
-  const poll = useCallback((projectId: string) => {
+  const poll = useCallback((videoId: string) => {
     pollAttemptsRef.current = 0;
     const tick = async () => {
       try {
-        const dto = await getProject(projectId);
+        const dto = await getVideo(videoId);
         if (cancelledRef.current) return;
-        setProject(dto);
+        setVideo(dto);
         setPhase(mapStatusToPhase(dto.status));
         if (dto.status === "READY") {
           setProgress(100);
@@ -145,7 +145,7 @@ export const useVideoUploader = () => {
     setProgress(0);
     setPhase("uploading");
     try {
-      const { projectId, uploadUrl } = await createProject({
+      const { videoId, uploadUrl } = await createVideo({
         filename: file.name,
         contentType: file.type,
         sizeBytes: file.size,
@@ -158,8 +158,8 @@ export const useVideoUploader = () => {
       });
       if (cancelledRef.current) return;
       setPhase("processing");
-      await completeUpload(projectId);
-      poll(projectId);
+      await completeUpload(videoId);
+      poll(videoId);
     } catch (err) {
       if (cancelledRef.current) return;
       setError(err instanceof Error ? err.message : "Upload failed.");
@@ -181,7 +181,7 @@ export const useVideoUploader = () => {
     previewUrl,
     meta,
     progress,
-    project,
+    video,
     isDragging,
     error,
     openPicker,

@@ -17,7 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
-  projects      Project[]
+  videos        Video[]
 
   @@map("user")
 }
@@ -69,7 +69,7 @@ model Verification {
   @@map("verification")
 }
 
-enum ProjectStatus {
+enum VideoStatus {
   PENDING
   UPLOADING
   UPLOADED
@@ -78,25 +78,25 @@ enum ProjectStatus {
   FAILED
 }
 
-model Project {
-  id               String        @id @default(cuid())
+model Video {
+  id               String      @id @default(cuid())
   userId           String
-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   title            String
   originalFilename String
-  s3Key            String        @unique
+  s3Key            String      @unique
   contentType      String
   sizeBytes        BigInt
   durationSeconds  Float?
   width            Int?
   height           Int?
-  status           ProjectStatus @default(PENDING)
+  status           VideoStatus @default(PENDING)
   viewUrl          String?
   viewUrlExpiresAt DateTime?
   error            String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([userId])
-  @@map("project")
+  @@map("video")
 }
