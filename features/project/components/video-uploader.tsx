@@ -1,18 +1,19 @@
 "use client";
 
+import { useVideoUploader } from "../hooks/use-video-uploader";
 import { UploadControlPanel } from "./upload-control-panel";
 import { UploadDropzone } from "./upload-dropzone";
-import { useVideoUploader } from "./use-video-uploader";
 import { VideoPreview } from "./video-preview";
 
 export const VideoUploader = () => {
   const {
     inputRef,
-    status,
+    phase,
     file,
     previewUrl,
     meta,
     progress,
+    project,
     isDragging,
     error,
     openPicker,
@@ -23,7 +24,6 @@ export const VideoUploader = () => {
     handleDrop,
     handleLoadedMetadata,
     startUpload,
-    cancelUpload,
   } = useVideoUploader();
 
   return (
@@ -36,7 +36,7 @@ export const VideoUploader = () => {
         onChange={handleInputChange}
       />
 
-      {status === "idle" ? (
+      {phase === "idle" ? (
         <UploadDropzone
           isDragging={isDragging}
           onDragLeave={handleDragLeave}
@@ -48,7 +48,8 @@ export const VideoUploader = () => {
         <div className="grid gap-4 lg:grid-cols-[1.65fr_1fr]">
           <VideoPreview
             previewUrl={previewUrl}
-            status={status}
+            viewUrl={project?.viewUrl ?? null}
+            phase={phase}
             onLoadedMetadata={handleLoadedMetadata}
             onReset={reset}
           />
@@ -56,8 +57,9 @@ export const VideoUploader = () => {
             file={file}
             meta={meta}
             progress={progress}
-            status={status}
-            onCancelUpload={cancelUpload}
+            phase={phase}
+            project={project}
+            error={error}
             onChooseDifferentFile={openPicker}
             onReset={reset}
             onUpload={startUpload}
@@ -65,7 +67,7 @@ export const VideoUploader = () => {
         </div>
       )}
 
-      {error && (
+      {error && phase === "selected" && (
         <p className="mt-3 font-mono text-xs text-destructive" role="alert">
           {error}
         </p>

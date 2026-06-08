@@ -1,16 +1,25 @@
-import { Check, RotateCcw, UploadCloud } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ExternalLink,
+  Loader2,
+  RotateCcw,
+  UploadCloud,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
-import type { UploadStatus, VideoMeta } from "./use-video-uploader";
+import type { VideoMeta } from "../hooks/use-video-uploader";
+import type { ProjectDTO, UploadPhase } from "../types";
 
 interface UploadControlPanelProps {
   file: File | null;
   meta: VideoMeta | null;
   progress: number;
-  status: UploadStatus;
-  onCancelUpload: () => void;
+  phase: UploadPhase;
+  project: ProjectDTO | null;
+  error: string | null;
   onChooseDifferentFile: () => void;
   onReset: () => void;
   onUpload: () => void;
@@ -35,9 +44,7 @@ const formatDuration = (seconds: number) => {
   return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
-const gcd = (a: number, b: number): number => {
-  return b === 0 ? a : gcd(b, a % b);
-};
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
 const formatAspect = (width: number, height: number) => {
   if (!width || !height) return "--";
@@ -53,32 +60,31 @@ const getExtension = (file: File) => {
   return (fromName ?? fromType ?? "video").toUpperCase();
 };
 
-const MetaCell = ({ label, value }: { label: string; value: string }) => {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-mono text-sm tabular-nums text-foreground">
-        {value}
-      </span>
-    </div>
-  );
-};
+const MetaCell = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+      {label}
+    </span>
+    <span className="font-mono text-sm tabular-nums text-foreground">
+      {value}
+    </span>
+  </div>
+);
 
 export const UploadControlPanel = ({
   file,
   meta,
   progress,
-  status,
-  onCancelUpload,
+  phase,
+  project,
+  error,
   onChooseDifferentFile,
   onReset,
   onUpload,
 }: UploadControlPanelProps) => {
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5">
-      {status === "selected" && (
+      {phase === "selected" && (
         <>
           <div>
             <p className="eyebrow">Selected clip</p>
@@ -99,10 +105,7 @@ export const UploadControlPanel = ({
               value={meta ? formatAspect(meta.width, meta.height) : "--"}
             />
             <MetaCell label="Size" value={file ? formatBytes(file.size) : "--"} />
-            <MetaCell
-              label="Format"
-              value={file ? getExtension(file) : "--"}
-            />
+            <MetaCell label="Format" value={file ? getExtension(file) : "--"} />
           </div>
           <div className="mt-auto flex flex-col gap-2">
             <Button type="button" size="lg" onClick={onUpload}>
@@ -115,7 +118,7 @@ export const UploadControlPanel = ({
         </>
       )}
 
-      {status === "uploading" && (
+      {phase === "uploading" && (
         <>
           <div>
             <p className="eyebrow">Uploading</p>
@@ -138,15 +141,40 @@ export const UploadControlPanel = ({
             {" / "}
             {formatBytes(file?.size ?? 0)}
           </p>
-          <div className="mt-auto">
-            <Button type="button" variant="ghost" onClick={onCancelUpload}>
-              Cancel upload
-            </Button>
-          </div>
         </>
       )}
 
-      {status === "done" && (
+      {phase === "processing" && (
+        <>
+          <div>
+            <p className="eyebrow">In progress</p>
+            <div className="mt-2 flex items-center gap-2.5">
+              <Loader2 className="size-4 animate-spin text-primary" />
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground">
+                Finalizing on server
+              </p>
+            </div>
+          </div>
+          <p
+            className="truncate font-display text-lg font-semibold tracking-tight"
+            title={file?.name}
+          >
+            {file?.name}
+          </p>
+          <div className="border-y border-border py-4">
+            <Progress value={null} aria-label="Processing" />
+            <p className="mt-3 flex items-center gap-2 font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+              <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+              Verifying upload
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Verifying the upload and preparing a shareable link…
+          </p>
+        </>
+      )}
+
+      {phase === "ready" && (
         <>
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -158,13 +186,28 @@ export const UploadControlPanel = ({
           </div>
           <p
             className="truncate font-display text-lg font-semibold tracking-tight"
-            title={file?.name}
+            title={project?.title}
           >
-            {file?.name}
+            {project?.title}
           </p>
-          <p className="text-sm text-muted-foreground">
-            Your video is ready to be clipped into shorts.
-          </p>
+          {project?.viewUrl && (
+            <a
+              href={project.viewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="group/link flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-3.5 py-3 transition-colors hover:border-primary/40 hover:bg-secondary/60"
+            >
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+                  Signed view URL
+                </span>
+                <span className="truncate font-mono text-xs text-foreground">
+                  {project.viewUrl}
+                </span>
+              </span>
+              <ExternalLink className="size-4 shrink-0 text-muted-foreground transition-colors group-hover/link:text-primary" />
+            </a>
+          )}
           <div className="mt-auto">
             <Button
               type="button"
@@ -174,6 +217,32 @@ export const UploadControlPanel = ({
               className="w-full"
             >
               <RotateCcw /> Upload another
+            </Button>
+          </div>
+        </>
+      )}
+
+      {phase === "failed" && (
+        <>
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-full bg-destructive/15 text-destructive">
+              <AlertTriangle className="size-4" />
+            </span>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-destructive">
+              Upload failed
+            </p>
+          </div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3">
+            <p className="text-sm text-foreground/90" role="alert">
+              {error ?? "Something went wrong during upload."}
+            </p>
+          </div>
+          <div className="mt-auto flex flex-col gap-2">
+            <Button type="button" size="lg" onClick={onUpload}>
+              <RotateCcw /> Try again
+            </Button>
+            <Button type="button" variant="ghost" onClick={onReset}>
+              Start over
             </Button>
           </div>
         </>

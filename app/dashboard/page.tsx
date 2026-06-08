@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { getCurrentSession } from "@/lib/auth-server";
-import { VideoUploader } from "./_components/video-uploader/video-uploader";
+import { VideoUploader } from "@/features/project";
 
 export const dynamic = "force-dynamic";
 
