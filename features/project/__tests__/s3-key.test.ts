@@ -8,7 +8,7 @@ describe("sanitizeFilename", () => {
   });
 
   it("collapses repeated separators and trims edges", () => {
-    expect(sanitizeFilename("  __weird   name__ .mov ")).toBe("weird-name-.mov");
+    expect(sanitizeFilename("  __weird   name__ .mov ")).toBe("weird-name.mov");
   });
 
   it("falls back to 'video' when nothing usable remains", () => {
