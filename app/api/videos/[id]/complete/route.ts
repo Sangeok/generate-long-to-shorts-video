@@ -4,8 +4,6 @@ import { getVideoForUser, updateVideoStatus } from "@/features/video/server";
 import { getCurrentSession } from "@/lib/auth-server";
 import { inngest } from "@/lib/inngest";
 
-export const runtime = "nodejs";
-
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },

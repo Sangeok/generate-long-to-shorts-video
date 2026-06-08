@@ -10,8 +10,6 @@ import { serializeVideo } from "@/features/video/serialize";
 import { isViewUrlExpired } from "@/features/video/status";
 import { getCurrentSession } from "@/lib/auth-server";
 
-export const runtime = "nodejs";
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },

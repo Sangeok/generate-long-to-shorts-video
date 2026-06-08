@@ -4,8 +4,6 @@ import { buildS3Key } from "@/features/video/s3-key";
 import { createVideo, createUploadUrl } from "@/features/video/server";
 import { getCurrentSession } from "@/lib/auth-server";
 
-export const runtime = "nodejs";
-
 interface CreateVideoBody {
   filename: string;
   contentType: string;
