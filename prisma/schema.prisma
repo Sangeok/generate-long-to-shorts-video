@@ -17,6 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  projects      Project[]
 
   @@map("user")
 }
@@ -66,4 +67,36 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+enum ProjectStatus {
+  PENDING
+  UPLOADING
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Project {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  originalFilename String
+  s3Key            String        @unique
+  contentType      String
+  sizeBytes        BigInt
+  durationSeconds  Float?
+  width            Int?
+  height           Int?
+  status           ProjectStatus @default(PENDING)
+  viewUrl          String?
+  viewUrlExpiresAt DateTime?
+  error            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("project")
 }
