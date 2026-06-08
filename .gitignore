@@ -18,6 +18,8 @@
 !/docs/conventions/**
 !/docs/plans/
 !/docs/plans/**
+!/docs/setup/
+!/docs/setup/**
 
 # next.js
 /.next/
