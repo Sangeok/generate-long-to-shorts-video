@@ -9,12 +9,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { getS3Bucket, getS3Client } from "@/lib/s3";
 
-const UPLOAD_URL_TTL_SECONDS = 60 * 10; // 10분
-const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7일 (SigV4 최대)
-
-export function getViewUrlTtlSeconds(): number {
-  return VIEW_URL_TTL_SECONDS;
-}
+const UPLOAD_URL_TTL_SECONDS = 60 * 10; // 10 minutes
+export const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
 
 export function createUploadUrl(key: string, contentType: string): Promise<string> {
   const command = new PutObjectCommand({

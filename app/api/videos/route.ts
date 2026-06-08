@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   if (!body.filename || !body.contentType || !body.sizeBytes) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
+  
   if (!body.contentType.startsWith("video/")) {
     return NextResponse.json(
       { error: "Only video uploads are allowed" },

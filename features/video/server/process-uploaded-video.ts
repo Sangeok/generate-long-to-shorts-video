@@ -3,8 +3,8 @@ import "server-only";
 import { videoUploadedEvent, inngest } from "@/lib/inngest";
 
 import {
+  VIEW_URL_TTL_SECONDS,
   createViewUrl,
-  getViewUrlTtlSeconds,
   objectExists,
 } from "./s3-presign";
 import {
@@ -48,7 +48,7 @@ export const processUploadedVideo = inngest.createFunction(
     });
 
     await step.run("finalize", async () => {
-      const expiresAt = new Date(Date.now() + getViewUrlTtlSeconds() * 1000);
+      const expiresAt = new Date(Date.now() + VIEW_URL_TTL_SECONDS * 1000);
       await markReady(videoId, viewUrl, expiresAt);
     });
 

@@ -10,9 +10,9 @@ export {
   updateVideoStatus,
 } from "./video-repository";
 export {
+  VIEW_URL_TTL_SECONDS,
   createUploadUrl,
   createViewUrl,
-  getViewUrlTtlSeconds,
   objectExists,
 } from "./s3-presign";
 export { processUploadedVideo } from "./process-uploaded-video";
