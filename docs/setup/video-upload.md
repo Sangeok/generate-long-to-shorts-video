@@ -2,7 +2,7 @@
 
 대시보드의 영상 업로드 기능은 브라우저가 presigned URL 로 S3 에 직접 업로드하고,
 Inngest 함수가 S3 객체 검증·signed view URL 생성·DB 상태 갱신을 수행한다. UI 는
-DB 상태를 폴링해 진행 상황을 보여준다.
+DB 상태를 폴링해 진행 상황을 보여준다. 업로드마다 새 `Video` 레코드가 생성된다.
 
 ## 1. 환경 변수 (`.env`)
 
@@ -39,7 +39,15 @@ INNGEST_SIGNING_KEY=""
 
 배포 시 `AllowedOrigins` 에 운영 도메인을 추가한다.
 
-## 4. Inngest 로컬 개발
+## 4. DB 마이그레이션
+
+`Video` 모델/마이그레이션을 데이터베이스에 적용한다:
+
+```bash
+npm run db:deploy
+```
+
+## 5. Inngest 로컬 개발
 
 터미널 2개에서 각각 실행한다:
 
@@ -52,10 +60,10 @@ Inngest Dev Server 대시보드(기본 http://localhost:8288)에서 이벤트와
 각 `step.run` 단계를 확인할 수 있다. Cloud 전환 시 `INNGEST_EVENT_KEY` /
 `INNGEST_SIGNING_KEY` 를 채우고 dev server 없이 운영 엔드포인트에 동기화한다.
 
-## 5. 동작 흐름 요약
+## 6. 동작 흐름 요약
 
-1. `POST /api/projects` — Project 생성(status=PENDING), S3 key + presigned PUT URL 반환.
+1. `POST /api/videos` — Video 생성(status=PENDING), S3 key + presigned PUT URL 반환.
 2. 브라우저가 파일을 S3 로 직접 PUT (실제 업로드 진행률).
-3. `POST /api/projects/{id}/complete` — status=UPLOADED, Inngest 이벤트 전송.
+3. `POST /api/videos/{id}/complete` — status=UPLOADED, Inngest 이벤트(`video/uploaded`) 전송.
 4. Inngest `process-uploaded-video` — verify → sign → finalize(status=READY, viewUrl 저장).
-5. `GET /api/projects/{id}` 폴링 — READY 가 되면 signed view URL 로 재생.
+5. `GET /api/videos/{id}` 폴링 — READY 가 되면 signed view URL 로 재생.
