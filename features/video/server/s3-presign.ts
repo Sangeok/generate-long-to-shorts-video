@@ -12,6 +12,7 @@ import { getS3Bucket, getS3Client } from "@/lib/s3";
 const UPLOAD_URL_TTL_SECONDS = 60 * 10; // 10 minutes
 const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
 
+// Presigned PUT URL so the browser uploads to S3 directly (no AWS credentials).
 export function createUploadUrl(key: string, contentType: string): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: getS3Bucket(),
@@ -23,8 +24,7 @@ export function createUploadUrl(key: string, contentType: string): Promise<strin
   });
 }
 
-// Returns the signed URL together with its expiry so the two never drift apart
-// and the TTL never has to leak out of this module.
+// Presigned GET URL so the browser can view the private S3 object.
 export async function createViewUrl(
   key: string,
 ): Promise<{ url: string; expiresAtMs: number }> {
