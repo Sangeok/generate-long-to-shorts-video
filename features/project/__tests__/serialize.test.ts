@@ -39,7 +39,7 @@ describe("serializeProject", () => {
   });
 
   it("does not expose internal fields (s3Key, viewUrlExpiresAt, userId)", () => {
-    const dto = serializeProject(base) as Record<string, unknown>;
+    const dto = serializeProject(base) as unknown as Record<string, unknown>;
     expect(dto.s3Key).toBeUndefined();
     expect(dto.viewUrlExpiresAt).toBeUndefined();
     expect(dto.userId).toBeUndefined();
