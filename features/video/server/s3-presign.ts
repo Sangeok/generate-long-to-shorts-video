@@ -10,7 +10,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getS3Bucket, getS3Client } from "@/lib/s3";
 
 const UPLOAD_URL_TTL_SECONDS = 60 * 10; // 10 minutes
-export const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
+const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
 
 export function createUploadUrl(key: string, contentType: string): Promise<string> {
   const command = new PutObjectCommand({
@@ -23,11 +23,16 @@ export function createUploadUrl(key: string, contentType: string): Promise<strin
   });
 }
 
-export function createViewUrl(key: string): Promise<string> {
+// Returns the signed URL together with its expiry so the two never drift apart
+// and the TTL never has to leak out of this module.
+export async function createViewUrl(
+  key: string,
+): Promise<{ url: string; expiresAtMs: number }> {
   const command = new GetObjectCommand({ Bucket: getS3Bucket(), Key: key });
-  return getSignedUrl(getS3Client(), command, {
+  const url = await getSignedUrl(getS3Client(), command, {
     expiresIn: VIEW_URL_TTL_SECONDS,
   });
+  return { url, expiresAtMs: Date.now() + VIEW_URL_TTL_SECONDS * 1000 };
 }
 
 export async function objectExists(key: string): Promise<boolean> {

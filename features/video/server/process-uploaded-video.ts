@@ -2,11 +2,7 @@ import "server-only";
 
 import { videoUploadedEvent, inngest } from "@/lib/inngest";
 
-import {
-  VIEW_URL_TTL_SECONDS,
-  createViewUrl,
-  objectExists,
-} from "./s3-presign";
+import { createViewUrl, objectExists } from "./s3-presign";
 import {
   getVideoKey,
   markFailed,
@@ -43,15 +39,14 @@ export const processUploadedVideo = inngest.createFunction(
       }
     });
 
-    const viewUrl = await step.run("sign-view-url", async () => {
+    const signed = await step.run("sign-view-url", async () => {
       return createViewUrl(key);
     });
 
     await step.run("finalize", async () => {
-      const expiresAt = new Date(Date.now() + VIEW_URL_TTL_SECONDS * 1000);
-      await markReady(videoId, viewUrl, expiresAt);
+      await markReady(videoId, signed.url, new Date(signed.expiresAtMs));
     });
 
-    return { videoId, viewUrl };
+    return { videoId, viewUrl: signed.url };
   },
 );

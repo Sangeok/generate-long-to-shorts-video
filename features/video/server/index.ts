@@ -10,7 +10,6 @@ export {
   updateVideoStatus,
 } from "./video-repository";
 export {
-  VIEW_URL_TTL_SECONDS,
   createUploadUrl,
   createViewUrl,
   objectExists,

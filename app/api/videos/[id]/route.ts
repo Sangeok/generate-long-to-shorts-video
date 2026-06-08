@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import {
-  VIEW_URL_TTL_SECONDS,
   createViewUrl,
   getVideoForUser,
   saveViewUrl,
@@ -29,9 +28,8 @@ export async function GET(
     video.status === "READY" &&
     isViewUrlExpired(video.viewUrlExpiresAt, new Date())
   ) {
-    const viewUrl = await createViewUrl(video.s3Key);
-    const expiresAt = new Date(Date.now() + VIEW_URL_TTL_SECONDS * 1000);
-    video = await saveViewUrl(id, viewUrl, expiresAt);
+    const signed = await createViewUrl(video.s3Key);
+    video = await saveViewUrl(id, signed.url, new Date(signed.expiresAtMs));
   }
 
   return NextResponse.json(serializeVideo(video));
