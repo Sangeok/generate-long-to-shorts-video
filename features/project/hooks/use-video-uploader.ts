@@ -24,10 +24,12 @@ export interface VideoMeta {
 }
 
 const POLL_INTERVAL_MS = 1500;
+const MAX_POLL_ATTEMPTS = 80; // ~2 minutes before giving up on a stuck backend
 
 export const useVideoUploader = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollAttemptsRef = useRef(0);
   const cancelledRef = useRef(false);
 
   const [phase, setPhase] = useState<UploadPhase>("idle");
@@ -105,6 +107,7 @@ export const useVideoUploader = () => {
   };
 
   const poll = useCallback((projectId: string) => {
+    pollAttemptsRef.current = 0;
     const tick = async () => {
       try {
         const dto = await getProject(projectId);
@@ -117,6 +120,12 @@ export const useVideoUploader = () => {
         }
         if (dto.status === "FAILED") {
           setError(dto.error ?? "Processing failed.");
+          return;
+        }
+        pollAttemptsRef.current += 1;
+        if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
+          setError("Timed out waiting for processing to finish.");
+          setPhase("failed");
           return;
         }
         pollRef.current = setTimeout(tick, POLL_INTERVAL_MS);

@@ -21,6 +21,12 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Only finalize an upload that is still in its pre-processing window. Guards
+  // against double-submits re-firing the pipeline on an already-processing/ready project.
+  if (project.status !== "PENDING" && project.status !== "UPLOADING") {
+    return NextResponse.json({ ok: true, alreadyStarted: true });
+  }
+
   await updateProjectStatus(id, "UPLOADED");
   await inngest.send({
     name: "project/video.uploaded",

@@ -40,7 +40,17 @@ export async function objectExists(key: string): Promise<boolean> {
       new HeadObjectCommand({ Bucket: getS3Bucket(), Key: key }),
     );
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    const status =
+      typeof error === "object" && error !== null && "$metadata" in error
+        ? (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+            ?.httpStatusCode
+        : undefined;
+    if (status === 404) {
+      return false;
+    }
+    // Transient/credential errors propagate so Inngest can retry instead of
+    // reporting a misleading "object not found".
+    throw error;
   }
 }
