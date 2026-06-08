@@ -15,7 +15,7 @@ let client: S3Client | undefined;
 export function getS3Client(): S3Client {
   if (!client) {
     client = new S3Client({
-      region: requireEnv("AWS_REGION"),
+      region: getAwsRegion(),
       credentials: {
         accessKeyId: requireEnv("AWS_ACCESS_KEY_ID"),
         secretAccessKey: requireEnv("AWS_SECRET_ACCESS_KEY"),
@@ -27,4 +27,13 @@ export function getS3Client(): S3Client {
 
 export function getS3Bucket(): string {
   return requireEnv("S3_BUCKET");
+}
+
+export function getAwsRegion(): string {
+  return requireEnv("AWS_REGION");
+}
+
+export function getS3ObjectUrl(key: string): string {
+  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+  return `https://${getS3Bucket()}.s3.${getAwsRegion()}.amazonaws.com/${encodedKey}`;
 }

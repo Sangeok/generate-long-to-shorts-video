@@ -1,3 +1,5 @@
+const PENDING_UPLOAD_PREFIX = "incoming";
+
 export function sanitizeFilename(name: string): string {
   const cleaned = name
     .trim()
@@ -15,4 +17,8 @@ export function buildS3Key(
   filename: string,
 ): string {
   return `uploads/${userId}/${videoId}/${sanitizeFilename(filename)}`;
+}
+
+export function buildPendingS3Key(finalKey: string): string {
+  return `${PENDING_UPLOAD_PREFIX}/${finalKey}`;
 }

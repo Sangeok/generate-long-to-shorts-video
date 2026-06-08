@@ -9,6 +9,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { getS3Bucket, getS3Client } from "@/lib/s3";
 
+import { buildPendingS3Key } from "../s3-key";
+
 const UPLOAD_URL_TTL_SECONDS = 60 * 10; // 10 minutes
 const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
 
@@ -16,7 +18,7 @@ const VIEW_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days (SigV4 maximum)
 export function createUploadUrl(key: string, contentType: string): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: getS3Bucket(),
-    Key: key,
+    Key: buildPendingS3Key(key),
     ContentType: contentType,
   });
   return getSignedUrl(getS3Client(), command, {

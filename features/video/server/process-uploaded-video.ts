@@ -2,7 +2,9 @@ import "server-only";
 
 import { videoUploadedEvent, inngest } from "@/lib/inngest";
 
+import { buildPendingS3Key } from "../s3-key";
 import { createViewUrl, objectExists } from "./s3-presign";
+import { uploadPendingVideoToS3 } from "./s3-upload";
 import {
   getVideoKey,
   markFailed,
@@ -32,21 +34,26 @@ export const processUploadedVideo = inngest.createFunction(
       return video.s3Key;
     });
 
-    await step.run("verify-s3-object", async () => {
-      const exists = await objectExists(key);
+    await step.run("verify-pending-s3-object", async () => {
+      const pendingKey = buildPendingS3Key(key);
+      const exists = await objectExists(pendingKey);
       if (!exists) {
-        throw new Error(`S3 object not found for key: ${key}`);
+        throw new Error(`S3 object not found for key: ${pendingKey}`);
       }
     });
 
+    const uploaded = await step.run("upload-to-s3", async () => {
+      return uploadPendingVideoToS3(key);
+    });
+
     const signed = await step.run("sign-view-url", async () => {
-      return createViewUrl(key);
+      return createViewUrl(uploaded.key);
     });
 
     await step.run("finalize", async () => {
       await markReady(videoId, signed.url, new Date(signed.expiresAtMs));
     });
 
-    return { videoId, viewUrl: signed.url };
+    return { videoId, videoUrl: uploaded.url, viewUrl: signed.url };
   },
 );

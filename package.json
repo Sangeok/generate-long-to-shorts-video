@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "inngest-dev" : "npx inngest-cli@latest dev",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
