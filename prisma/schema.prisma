@@ -17,6 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  projects      Project[]
 
   @@map("user")
 }
@@ -66,4 +67,25 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  videoKey    String
+  status      String   @default("uploaded")
+  durationSec Float?
+  width       Int?
+  height      Int?
+  transcript  Json?
+  captionsVtt String?
+  segments    Json?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("project")
 }

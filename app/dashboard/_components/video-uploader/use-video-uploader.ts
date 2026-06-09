@@ -6,8 +6,16 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
-export type UploadStatus = "idle" | "selected" | "uploading" | "done";
+import { createUploadUrl, startAnalysis } from "@/features/project/actions";
+
+export type UploadStatus =
+  | "idle"
+  | "selected"
+  | "uploading"
+  | "done"
+  | "analyzing";
 
 export interface VideoMeta {
   duration: number;
@@ -15,10 +23,36 @@ export interface VideoMeta {
   height: number;
 }
 
+function uploadToS3(
+  uploadUrl: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Upload network error"));
+    xhr.send(file);
+  });
+}
+
 export const useVideoUploader = () => {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progressRef = useRef(0);
+  const videoKeyRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [file, setFile] = useState<File | null>(null);
@@ -27,12 +61,6 @@ export const useVideoUploader = () => {
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const clearUploadTimer = () => {
-    if (!intervalRef.current) return;
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  };
 
   const openPicker = () => inputRef.current?.click();
 
@@ -46,19 +74,19 @@ export const useVideoUploader = () => {
     setError(null);
     setMeta(null);
     setProgress(0);
+    videoKeyRef.current = null;
     setFile(candidate);
     setPreviewUrl(URL.createObjectURL(candidate));
     setStatus("selected");
   };
 
   const reset = () => {
-    clearUploadTimer();
     setStatus("idle");
     setFile(null);
     setPreviewUrl(null);
     setMeta(null);
     setProgress(0);
-    progressRef.current = 0;
+    videoKeyRef.current = null;
     setError(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -92,39 +120,48 @@ export const useVideoUploader = () => {
     });
   };
 
-  const startUpload = () => {
-    clearUploadTimer();
-    setStatus("uploading");
+  const startUpload = async () => {
+    if (!file) return;
+    setError(null);
     setProgress(0);
-    progressRef.current = 0;
-    intervalRef.current = setInterval(() => {
-      const next = Math.min(100, progressRef.current + Math.random() * 12 + 4);
-      progressRef.current = next;
-      setProgress(next);
-      if (next >= 100) {
-        clearUploadTimer();
-        setStatus("done");
-      }
-    }, 220);
+    setStatus("uploading");
+    try {
+      const { uploadUrl, videoKey } = await createUploadUrl({
+        filename: file.name,
+        contentType: file.type,
+      });
+      await uploadToS3(uploadUrl, file, setProgress);
+      videoKeyRef.current = videoKey;
+      setStatus("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+      setStatus("selected");
+    }
   };
 
-  const cancelUpload = () => {
-    clearUploadTimer();
-    setProgress(0);
-    progressRef.current = 0;
-    setStatus("selected");
+  const analyze = async () => {
+    if (!file || !videoKeyRef.current) return;
+    setError(null);
+    setStatus("analyzing");
+    try {
+      const { projectId } = await startAnalysis({
+        videoKey: videoKeyRef.current,
+        title: file.name,
+        durationSec: meta?.duration ?? null,
+        width: meta?.width ?? null,
+        height: meta?.height ?? null,
+      });
+      router.push(`/dashboard/projects/${projectId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start analysis.");
+      setStatus("done");
+    }
   };
 
   useEffect(() => {
     if (!previewUrl) return;
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
 
   return {
     inputRef,
@@ -143,6 +180,6 @@ export const useVideoUploader = () => {
     handleDrop,
     handleLoadedMetadata,
     startUpload,
-    cancelUpload,
+    analyze,
   };
 };

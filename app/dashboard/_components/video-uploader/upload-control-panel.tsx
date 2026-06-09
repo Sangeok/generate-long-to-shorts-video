@@ -1,4 +1,4 @@
-import { Check, RotateCcw, UploadCloud } from "lucide-react";
+import { Check, Loader2, RotateCcw, Sparkles, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -10,7 +10,7 @@ interface UploadControlPanelProps {
   meta: VideoMeta | null;
   progress: number;
   status: UploadStatus;
-  onCancelUpload: () => void;
+  onAnalyze: () => void;
   onChooseDifferentFile: () => void;
   onReset: () => void;
   onUpload: () => void;
@@ -71,7 +71,7 @@ export const UploadControlPanel = ({
   meta,
   progress,
   status,
-  onCancelUpload,
+  onAnalyze,
   onChooseDifferentFile,
   onReset,
   onUpload,
@@ -138,15 +138,10 @@ export const UploadControlPanel = ({
             {" / "}
             {formatBytes(file?.size ?? 0)}
           </p>
-          <div className="mt-auto">
-            <Button type="button" variant="ghost" onClick={onCancelUpload}>
-              Cancel upload
-            </Button>
-          </div>
         </>
       )}
 
-      {status === "done" && (
+      {(status === "done" || status === "analyzing") && (
         <>
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -163,15 +158,30 @@ export const UploadControlPanel = ({
             {file?.name}
           </p>
           <p className="text-sm text-muted-foreground">
-            Your video is ready to be clipped into shorts.
+            Run AI analysis to transcribe the video and prepare shorts.
           </p>
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col gap-2">
             <Button
               type="button"
-              variant="outline"
               size="lg"
+              onClick={onAnalyze}
+              disabled={status === "analyzing"}
+            >
+              {status === "analyzing" ? (
+                <>
+                  <Loader2 className="animate-spin" /> Starting analysis…
+                </>
+              ) : (
+                <>
+                  <Sparkles /> AI analysis
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               onClick={onReset}
-              className="w-full"
+              disabled={status === "analyzing"}
             >
               <RotateCcw /> Upload another
             </Button>

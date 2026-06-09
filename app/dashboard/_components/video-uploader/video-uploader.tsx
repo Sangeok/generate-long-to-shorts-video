@@ -23,7 +23,7 @@ export const VideoUploader = () => {
     handleDrop,
     handleLoadedMetadata,
     startUpload,
-    cancelUpload,
+    analyze,
   } = useVideoUploader();
 
   return (
@@ -57,7 +57,7 @@ export const VideoUploader = () => {
             meta={meta}
             progress={progress}
             status={status}
-            onCancelUpload={cancelUpload}
+            onAnalyze={analyze}
             onChooseDifferentFile={openPicker}
             onReset={reset}
             onUpload={startUpload}
