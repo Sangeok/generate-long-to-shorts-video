@@ -1,2 +1,3 @@
 export { TranscriptionProgress } from "./components/progress/transcription-progress";
-export type { CaptionSegment, ProjectStatus } from "./types";
+export { ShortsSection } from "./components/shorts/shorts-section";
+export type { CaptionSegment, ProjectStatus, ShortRecord } from "./types";

@@ -28,3 +28,17 @@ export function presignGetUrl(key: string): Promise<string> {
     expiresIn: GET_URL_TTL_SECONDS,
   });
 }
+
+export function presignDownloadUrl(
+  key: string,
+  filename: string,
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: getS3Bucket(),
+    Key: key,
+    ResponseContentDisposition: `attachment; filename="${filename}"`,
+  });
+  return getSignedUrl(getS3Client(), command, {
+    expiresIn: GET_URL_TTL_SECONDS,
+  });
+}
