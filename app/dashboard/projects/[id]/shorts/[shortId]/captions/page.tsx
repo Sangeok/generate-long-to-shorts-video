@@ -59,6 +59,7 @@ export default async function CaptionsPage({
       <CaptionEditor
         projectId={id}
         shortId={short.id}
+        durationSec={short.durationSec}
         segments={segments}
         captionStyle={parseCaptionStyle(captionStyleSeed)}
       />

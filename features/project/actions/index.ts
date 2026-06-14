@@ -102,7 +102,7 @@ export async function startAnalysis(
 
 export async function updateShortCaptions(
   shortId: string,
-  texts: string[],
+  cues: CaptionSegment[],
   style: CaptionStyle,
 ): Promise<void> {
   const session = await getCurrentSession();
@@ -115,15 +115,24 @@ export async function updateShortCaptions(
     throw new Error("Short not found");
   }
 
-  const segments = short.segments as unknown as CaptionSegment[];
-  if (texts.length !== segments.length) {
-    throw new Error("Segment count mismatch");
-  }
+  // 추가/삭제로 개수가 바뀌므로 개수 검사 대신 타이밍을 정규화한다. 빈 텍스트와
+  // 잘못된 구간은 버리고, 재생 순서대로 정렬해 저장한다.
+  const next = (Array.isArray(cues) ? cues : [])
+    .map((cue) => ({
+      start: Number(cue.start),
+      end: Number(cue.end),
+      text: String(cue.text ?? "").trim(),
+    }))
+    .filter(
+      (cue) =>
+        Number.isFinite(cue.start) &&
+        Number.isFinite(cue.end) &&
+        cue.start >= 0 &&
+        cue.end > cue.start &&
+        cue.text.length > 0,
+    )
+    .sort((a, b) => a.start - b.start);
 
-  const next = segments.map((segment, index) => ({
-    ...segment,
-    text: texts[index].trim(),
-  }));
   await updateShortCaptionData(shortId, next, parseCaptionStyle(style));
 }
 

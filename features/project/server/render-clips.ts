@@ -17,8 +17,14 @@ import {
 import { presignGetUrl } from "./s3-presign";
 import { uploadObject } from "./s3-upload";
 
-// Center-crop to 9:16, then normalize to 1080x1920.
-const VERTICAL_FILTER = "crop=min(iw\\,ih*9/16):ih,scale=1080:1920";
+// Fit the whole frame into 9:16 with no cropping; fill the top/bottom band
+// with a blurred, zoomed copy of the same frame.
+const BLUR_FILL_FILTER =
+  "split=2[bg][fg];" +
+  "[bg]scale=1080:1920:force_original_aspect_ratio=increase," +
+  "crop=1080:1920,gblur=sigma=20[bg];" +
+  "[fg]scale=1080:-2[fg];" +
+  "[bg][fg]overlay=(W-w)/2:(H-h)/2";
 
 // The dev IAM user only allows s3:PutObject under uploads/*, so rendered
 // clips live there as well.
@@ -37,6 +43,7 @@ async function renderClipFile(
   sourceName: string,
   target: RenderTarget,
   outputName: string,
+  videoFilter: string,
 ): Promise<void> {
   await runFfmpeg(
     [
@@ -48,7 +55,7 @@ async function renderClipFile(
       "-t",
       String(target.endSec - target.startSec),
       "-vf",
-      VERTICAL_FILTER,
+      videoFilter,
       "-c:v",
       "libx264",
       "-preset",
@@ -105,7 +112,13 @@ export const renderClips = inngest.createFunction(
           // Failures are recorded per short so one bad clip never blocks the rest.
           const outputName = `${short.id}.mp4`;
           try {
-            await renderClipFile(tempDir, sourceName, short, outputName);
+            await renderClipFile(
+              tempDir,
+              sourceName,
+              short,
+              outputName,
+              BLUR_FILL_FILTER,
+            );
             const clipKey = `${CLIP_KEY_PREFIX}/${projectId}/${short.id}.mp4`;
             await uploadObject(
               clipKey,
