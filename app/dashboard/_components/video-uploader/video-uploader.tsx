@@ -1,11 +1,21 @@
 "use client";
 
+import type { ProjectContentType, ProjectLanguage } from "@/features/project";
+
 import { UploadControlPanel } from "./upload-control-panel";
 import { UploadDropzone } from "./upload-dropzone";
 import { useVideoUploader } from "./use-video-uploader";
 import { VideoPreview } from "./video-preview";
 
-export const VideoUploader = () => {
+interface VideoUploaderProps {
+  defaultContentType: ProjectContentType;
+  defaultLanguage: ProjectLanguage;
+}
+
+export const VideoUploader = ({
+  defaultContentType,
+  defaultLanguage,
+}: VideoUploaderProps) => {
   const {
     inputRef,
     status,
@@ -28,7 +38,10 @@ export const VideoUploader = () => {
     handleLoadedMetadata,
     startUpload,
     analyze,
-  } = useVideoUploader();
+  } = useVideoUploader({
+    initialContentType: defaultContentType,
+    initialLanguage: defaultLanguage,
+  });
 
   return (
     <div className="animate-rise">

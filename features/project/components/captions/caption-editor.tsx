@@ -9,11 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 import { updateShortCaptions } from "../../actions";
-import { getClipUrl } from "../../api/get-clip-url";
+import { ClipNotReadyError, getClipUrl } from "../../api/get-clip-url";
 import { isSameCaptionStyle } from "../../caption-style";
 import type { CaptionSegment, CaptionStyle } from "../../types";
 import { CaptionStyleControls } from "./caption-style-controls";
 import { ClipPlayer } from "./clip-player";
+
+// 클립은 프로젝트 완료 후 렌더되므로, 진입 시점에 아직 준비 안 됐으면 폴링한다.
+const CLIP_POLL_INTERVAL_MS = 4000;
 
 interface CaptionEditorProps {
   projectId: string;
@@ -43,22 +46,34 @@ export const CaptionEditor = ({
   const [savedStyle, setSavedStyle] = useState(captionStyle);
   const [saving, setSaving] = useState(false);
   const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [clipFailed, setClipFailed] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getClipUrl(projectId, shortId)
-      .then((url) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    // 404는 "아직 렌더 중"이므로 준비될 때까지 폴링하고, 실제 실패만 에러로 표시.
+    const loadClip = async () => {
+      try {
+        const url = await getClipUrl(projectId, shortId);
         if (!cancelled) setClipUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          toast.error("Couldn't load the clip preview.");
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof ClipNotReadyError) {
+          timer = setTimeout(loadClip, CLIP_POLL_INTERVAL_MS);
+        } else {
+          setClipFailed(true);
         }
-      });
+      }
+    };
+
+    loadClip();
+
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [projectId, shortId]);
 
@@ -113,9 +128,16 @@ export const CaptionEditor = ({
             videoRef={videoRef}
             onTimeChange={setCurrentTime}
           />
+        ) : clipFailed ? (
+          <div className="grid size-full place-items-center px-6 text-center text-sm text-muted-foreground">
+            Couldn&apos;t load the clip preview.
+          </div>
         ) : (
-          <div className="grid size-full place-items-center text-muted-foreground">
+          <div className="flex size-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Loader2 className="size-6 animate-spin" />
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em]">
+              Preparing clip…
+            </span>
           </div>
         )}
       </div>

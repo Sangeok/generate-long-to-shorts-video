@@ -1,5 +1,6 @@
 export { parseCaptionStyle } from "./caption-style";
 export { CaptionEditor } from "./components/captions/caption-editor";
+export { CaptionStyleControls } from "./components/captions/caption-style-controls";
 export { TranscriptionProgress } from "./components/progress/transcription-progress";
 export { ShortsSection } from "./components/shorts/shorts-section";
 export { VideoLibrary } from "./components/videos/video-library";

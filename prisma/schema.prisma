@@ -18,8 +18,22 @@ model User {
   accounts      Account[]
   sessions      Session[]
   projects      Project[]
+  settings      UserSettings?
 
   @@map("user")
+}
+
+model UserSettings {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language     String   @default("en")
+  contentType  String   @default("talk")
+  captionStyle Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("user_settings")
 }
 
 model Session {

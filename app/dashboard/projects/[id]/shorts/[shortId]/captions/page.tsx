@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { CaptionEditor, parseCaptionStyle } from "@/features/project";
 import type { CaptionSegment } from "@/features/project";
 import { getShortDetailForUser } from "@/features/project/server";
+import { getUserSettings } from "@/features/settings/server";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,9 @@ export default async function CaptionsPage({
   }
 
   const segments = short.segments as unknown as CaptionSegment[];
+  // 쇼츠에 저장된 스타일이 없으면 사용자 기본 캡션 스타일을 시드로 사용한다.
+  const settings = await getUserSettings(session.user.id);
+  const captionStyleSeed = short.captionStyle ?? settings.captionStyle;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 py-12 sm:px-6 sm:py-16">
@@ -56,7 +60,7 @@ export default async function CaptionsPage({
         projectId={id}
         shortId={short.id}
         segments={segments}
-        captionStyle={parseCaptionStyle(short.captionStyle)}
+        captionStyle={parseCaptionStyle(captionStyleSeed)}
       />
     </div>
   );
