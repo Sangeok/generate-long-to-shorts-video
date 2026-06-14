@@ -1,4 +1,5 @@
-import type { CaptionSegment } from "../types";
+import { buildAssStyle, buildCaptionAnimationTag } from "../caption-style";
+import type { CaptionSegment, CaptionStyle } from "../types";
 
 interface DeepgramUtterance {
   start: number;
@@ -42,47 +43,7 @@ export function sliceSegments(
     }));
 }
 
-// Keep burned-in cues at 1-2 lines; utterance-level segments easily run 4+.
-const MAX_CUE_CHARS = 40;
-
-function splitSegment(segment: CaptionSegment): CaptionSegment[] {
-  const words = segment.text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-
-  const chunks: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (current && next.length > MAX_CUE_CHARS) {
-      chunks.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current) chunks.push(current);
-  if (chunks.length === 1) return [segment];
-
-  // Timing is split proportionally to chunk length within the segment.
-  const totalChars = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const duration = segment.end - segment.start;
-  let cursor = segment.start;
-  return chunks.map((text, index) => {
-    const start = cursor;
-    const end =
-      index === chunks.length - 1
-        ? segment.end
-        : cursor + duration * (text.length / totalChars);
-    cursor = end;
-    return { start, end, text };
-  });
-}
-
-export function splitSegmentsForCaptions(
-  segments: CaptionSegment[],
-): CaptionSegment[] {
-  return segments.flatMap(splitSegment);
-}
+export { splitSegmentsForCaptions } from "../captions";
 
 export function buildVtt(segments: CaptionSegment[]): string {
   const cues = segments.map((segment, index) => {
@@ -90,4 +51,55 @@ export function buildVtt(segments: CaptionSegment[]): string {
     return `${index + 1}\n${range}\n${segment.text}`;
   });
   return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+}
+
+// ASS uses H:MM:SS.cc (centiseconds). Centis are carried into seconds so a value
+// like 1.999s formats as 0:00:02.00, never 0:00:01.100.
+function formatAssTimestamp(totalSeconds: number): string {
+  const totalCentis = Math.round(Math.max(0, totalSeconds) * 100);
+  const centis = totalCentis % 100;
+  const whole = (totalCentis - centis) / 100;
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const seconds = whole % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${hours}:${pad(minutes)}:${pad(seconds)}.${pad(centis)}`;
+}
+
+// Braces delimit libass override blocks, so cue text must not contain them;
+// newlines become hard breaks.
+function escapeAssText(text: string): string {
+  return text
+    .replace(/\r?\n/g, "\\N")
+    .replace(/\{/g, "(")
+    .replace(/\}/g, ")");
+}
+
+// Self-generated .ass for the burn-in: styles are embedded (no force_style) so
+// the animation override tag can ride on each cue. The animation prefix is
+// omitted entirely when "none" rather than emitting an empty {} block.
+export function buildAss(cues: CaptionSegment[], style: CaptionStyle): string {
+  const tag = buildCaptionAnimationTag(style.animation);
+  const prefix = tag ? `{${tag}}` : "";
+  const dialogues = cues.map((cue) => {
+    const range = `${formatAssTimestamp(cue.start)},${formatAssTimestamp(cue.end)}`;
+    return `Dialogue: 0,${range},Default,,0,0,0,,${prefix}${escapeAssText(cue.text)}`;
+  });
+  return [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    "PlayResX: 384",
+    "PlayResY: 288",
+    "ScaledBorderAndShadow: yes",
+    "YCbCr Matrix: None",
+    "WrapStyle: 0",
+    "",
+    "[V4+ Styles]",
+    buildAssStyle(style),
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+    ...dialogues,
+    "",
+  ].join("\n");
 }

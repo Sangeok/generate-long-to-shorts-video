@@ -3,8 +3,14 @@ import "server-only";
 import { getDeepgramClient } from "@/lib/deepgram";
 import { inngest } from "@/lib/inngest";
 
+import type { ProjectLanguage } from "../types";
 import { buildSegments, buildVtt } from "./captions";
 import { detectShorts } from "./detect-shorts";
+import {
+  deleteGeminiFilesForProject,
+  detectShortsFromUploadedVideo,
+  prepareVideoForDetection,
+} from "./detect-shorts-video";
 import {
   getProjectVideoKey,
   markProjectFailed,
@@ -33,6 +39,8 @@ export const transcribeVideo = inngest.createFunction(
     onFailure: async ({ event, error }) => {
       const { projectId } = event.data.event.data as { projectId: string };
       await markProjectFailed(projectId, error.message);
+      // A cinematic run may have uploaded a proxy to Gemini before failing.
+      await deleteGeminiFilesForProject(projectId).catch(() => {});
     },
   },
   async ({ event, step }) => {
@@ -42,52 +50,84 @@ export const transcribeVideo = inngest.createFunction(
       updateProjectStatus(projectId, "transcribing"),
     );
 
-    const transcription = await step.run("transcribe", async () => {
-      const { videoKey } = await getProjectVideoKey(projectId);
-      const url = await presignGetUrl(videoKey);
-      const result = await getDeepgramClient().listen.v1.media.transcribeUrl(
-        {
-          url,
-          model: "nova-3",
-          smart_format: true,
-          punctuate: true,
-          utterances: true,
-        },
-        { timeoutInSeconds: TRANSCRIBE_TIMEOUT_SEC },
-      );
-      return result as unknown as DeepgramResult;
-    });
-
-    const captions = await step.run("build-captions", () => {
-      const utterances = transcription.results?.utterances ?? [];
-      const segments = buildSegments(utterances);
-      const vtt = buildVtt(segments);
-      const text =
-        transcription.results?.channels?.[0]?.alternatives?.[0]?.transcript ??
-        "";
-      return {
-        text,
-        language: transcription.metadata?.detected_language ?? null,
-        segments,
-        vtt,
-      };
-    });
-
-    await step.run("persist", () =>
-      saveTranscription(
-        projectId,
-        { text: captions.text, language: captions.language },
-        captions.vtt,
-        captions.segments,
-      ),
+    const { videoKey, contentType, language } = await step.run(
+      "load-project",
+      () => getProjectVideoKey(projectId),
     );
+    const projectLanguage = language as ProjectLanguage;
+
+    // Transcription and cinematic video prep are independent until the Gemini
+    // call, so they run in parallel; prep usually dominates, hiding the
+    // transcription time entirely.
+    const [captions, preparedVideo] = await Promise.all([
+      (async () => {
+        const transcription = await step.run("transcribe", async () => {
+          const url = await presignGetUrl(videoKey);
+          const result =
+            await getDeepgramClient().listen.v1.media.transcribeUrl(
+              {
+                url,
+                model: "nova-3",
+                language: projectLanguage,
+                smart_format: true,
+                punctuate: true,
+                utterances: true,
+              },
+              { timeoutInSeconds: TRANSCRIBE_TIMEOUT_SEC },
+            );
+          return result as unknown as DeepgramResult;
+        });
+
+        const built = await step.run("build-captions", () => {
+          const utterances = transcription.results?.utterances ?? [];
+          const segments = buildSegments(utterances);
+          const vtt = buildVtt(segments);
+          const text =
+            transcription.results?.channels?.[0]?.alternatives?.[0]
+              ?.transcript ?? "";
+          return {
+            text,
+            language: transcription.metadata?.detected_language ?? projectLanguage,
+            segments,
+            vtt,
+          };
+        });
+
+        // Persist stays inside this branch so captions reach the UI as soon
+        // as they exist — do not move it after the parallel join.
+        await step.run("persist", () =>
+          saveTranscription(
+            projectId,
+            { text: built.text, language: built.language },
+            built.vtt,
+            built.segments,
+          ),
+        );
+
+        return built;
+      })(),
+      contentType === "cinematic"
+        ? step.run("prepare-video", async () => {
+            const sourceUrl = await presignGetUrl(videoKey);
+            return prepareVideoForDetection(sourceUrl, projectId);
+          })
+        : Promise.resolve(null),
+    ]);
 
     await step.run("mark-generating-shorts", () =>
       updateProjectStatus(projectId, "generating_shorts"),
     );
 
+    // Talk content is judged from captions alone; cinematic content needs the
+    // video itself so visual and audio-only moments are not missed.
     const shorts = await step.run("detect-shorts", () =>
-      detectShorts(captions.text, captions.segments),
+      preparedVideo
+        ? detectShortsFromUploadedVideo(
+            preparedVideo,
+            captions.segments,
+            projectLanguage,
+          )
+        : detectShorts(captions.text, captions.segments, projectLanguage),
     );
 
     await step.run("persist-shorts", () => saveShorts(projectId, shorts));

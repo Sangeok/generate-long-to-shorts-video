@@ -9,6 +9,10 @@ export const VideoUploader = () => {
   const {
     inputRef,
     status,
+    contentType,
+    setContentType,
+    language,
+    setLanguage,
     file,
     previewUrl,
     meta,
@@ -53,12 +57,16 @@ export const VideoUploader = () => {
             onReset={reset}
           />
           <UploadControlPanel
+            contentType={contentType}
+            language={language}
             file={file}
             meta={meta}
             progress={progress}
             status={status}
             onAnalyze={analyze}
             onChooseDifferentFile={openPicker}
+            onContentTypeChange={setContentType}
+            onLanguageChange={setLanguage}
             onReset={reset}
             onUpload={startUpload}
           />

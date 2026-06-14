@@ -2,19 +2,39 @@ import { Check, Loader2, RotateCcw, Sparkles, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { ProjectContentType, ProjectLanguage } from "@/features/project";
 
 import type { UploadStatus, VideoMeta } from "./use-video-uploader";
 
 interface UploadControlPanelProps {
+  contentType: ProjectContentType;
+  language: ProjectLanguage;
   file: File | null;
   meta: VideoMeta | null;
   progress: number;
   status: UploadStatus;
   onAnalyze: () => void;
   onChooseDifferentFile: () => void;
+  onContentTypeChange: (contentType: ProjectContentType) => void;
+  onLanguageChange: (language: ProjectLanguage) => void;
   onReset: () => void;
   onUpload: () => void;
 }
+
+const CONTENT_TYPES: {
+  value: ProjectContentType;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "talk", label: "Talk", hint: "Podcast, interview, lecture" },
+  { value: "cinematic", label: "Cinematic", hint: "Movie, drama, action" },
+];
+
+const LANGUAGES: { value: ProjectLanguage; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "ko", label: "한국어" },
+];
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return "0 B";
@@ -67,12 +87,16 @@ const MetaCell = ({ label, value }: { label: string; value: string }) => {
 };
 
 export const UploadControlPanel = ({
+  contentType,
+  language,
   file,
   meta,
   progress,
   status,
   onAnalyze,
   onChooseDifferentFile,
+  onContentTypeChange,
+  onLanguageChange,
   onReset,
   onUpload,
 }: UploadControlPanelProps) => {
@@ -160,6 +184,58 @@ export const UploadControlPanel = ({
           <p className="text-sm text-muted-foreground">
             Run AI analysis to transcribe the video and prepare shorts.
           </p>
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+              Content type
+            </span>
+            <ToggleGroup
+              value={[contentType]}
+              onValueChange={(value) => {
+                const next = value[0] as ProjectContentType | undefined;
+                if (next) onContentTypeChange(next);
+              }}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              disabled={status === "analyzing"}
+            >
+              {CONTENT_TYPES.map((type) => (
+                <ToggleGroupItem key={type.value} value={type.value}>
+                  {type.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <p className="text-xs text-muted-foreground">
+              {CONTENT_TYPES.find((type) => type.value === contentType)?.hint}
+              {contentType === "cinematic" &&
+                " — analyzes the video itself, so it takes longer."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+              Language
+            </span>
+            <ToggleGroup
+              value={[language]}
+              onValueChange={(value) => {
+                const next = value[0] as ProjectLanguage | undefined;
+                if (next) onLanguageChange(next);
+              }}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              disabled={status === "analyzing"}
+            >
+              {LANGUAGES.map((item) => (
+                <ToggleGroupItem key={item.value} value={item.value}>
+                  {item.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <p className="text-xs text-muted-foreground">
+              Spoken language of the video — sets transcription accuracy.
+            </p>
+          </div>
           <div className="mt-auto flex flex-col gap-2">
             <Button
               type="button"

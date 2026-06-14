@@ -5,12 +5,24 @@ import { Type } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini";
 
 import { SHORTS_CONFIG } from "../config";
-import type { CaptionSegment, ShortClip, ShortMoment } from "../types";
+import type {
+  CaptionSegment,
+  ProjectLanguage,
+  ShortClip,
+  ShortMoment,
+} from "../types";
 import { buildVtt, sliceSegments } from "./captions";
 
 type ShortsConfig = typeof SHORTS_CONFIG;
 
-const momentsSchema = {
+// Instruct Gemini to write title/reason in the source video's language.
+export function languageInstruction(language: ProjectLanguage): string {
+  return language === "ko"
+    ? "Write the title and reason in Korean."
+    : "Write the title and reason in English.";
+}
+
+export const momentsSchema = {
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
@@ -43,6 +55,7 @@ const momentsSchema = {
 function buildPrompt(
   transcriptText: string,
   segments: CaptionSegment[],
+  language: ProjectLanguage,
   config: ShortsConfig,
 ): string {
   const timeline = segments
@@ -63,6 +76,7 @@ function buildPrompt(
     `- startSec and endSec must fall within the timeline below and not overlap each other.`,
     `- Prefer moments with a strong hook, payoff, emotion, or standalone insight.`,
     `- seoScore (0-100) reflects how likely the clip ranks and goes viral.`,
+    `- ${languageInstruction(language)}`,
     "",
     "Timeline (seconds) with text:",
     timeline,
@@ -72,7 +86,7 @@ function buildPrompt(
   ].join("\n");
 }
 
-function clampMoments(
+export function clampMoments(
   moments: ShortMoment[],
   config: ShortsConfig,
 ): ShortMoment[] {
@@ -105,27 +119,10 @@ function clampMoments(
     .slice(0, config.count);
 }
 
-export async function detectShorts(
-  transcriptText: string,
+export function toShortClips(
+  moments: ShortMoment[],
   segments: CaptionSegment[],
-  config: ShortsConfig = SHORTS_CONFIG,
-): Promise<ShortClip[]> {
-  const response = await getGeminiClient().models.generateContent({
-    model: config.geminiModel,
-    contents: buildPrompt(transcriptText, segments, config),
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: momentsSchema,
-    },
-  });
-
-  const raw = response.text;
-  if (!raw) {
-    throw new Error("Gemini returned an empty shorts response");
-  }
-
-  const moments = clampMoments(JSON.parse(raw) as ShortMoment[], config);
-
+): ShortClip[] {
   return moments.map((moment) => {
     const segmentsForClip = sliceSegments(
       segments,
@@ -139,4 +136,28 @@ export async function detectShorts(
       segments: segmentsForClip,
     };
   });
+}
+
+export async function detectShorts(
+  transcriptText: string,
+  segments: CaptionSegment[],
+  language: ProjectLanguage,
+  config: ShortsConfig = SHORTS_CONFIG,
+): Promise<ShortClip[]> {
+  const response = await getGeminiClient().models.generateContent({
+    model: config.geminiModel,
+    contents: buildPrompt(transcriptText, segments, language, config),
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: momentsSchema,
+    },
+  });
+
+  const raw = response.text;
+  if (!raw) {
+    throw new Error("Gemini returned an empty shorts response");
+  }
+
+  const moments = clampMoments(JSON.parse(raw) as ShortMoment[], config);
+  return toShortClips(moments, segments);
 }

@@ -3,18 +3,22 @@
 import {
   AlertTriangle,
   CalendarClock,
+  Captions,
   Download,
   Loader2,
   Play,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { getShortExportStatus, requestShortExport } from "../../actions";
 import { getClipUrl } from "../../api/get-clip-url";
 import type { ShortRecord } from "../../types";
+import { ClipPlayer } from "../captions/clip-player";
 
 interface ShortCardProps {
   projectId: string;
@@ -33,6 +37,21 @@ function formatTimecode(totalSeconds: number): string {
 const WAVEFORM = Array.from({ length: 38 }, (_, index) =>
   Math.round(28 + Math.abs(Math.sin(index * 1.7) * 72)),
 );
+
+const EXPORT_POLL_INTERVAL_MS = 3000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function triggerDownload(url: string): void {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
 
 export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
   const [clipUrl, setClipUrl] = useState<string | null>(null);
@@ -55,17 +74,22 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
     }
   };
 
+  // Captions are burned in on demand: request an export, poll until the
+  // burned file is ready, then download it.
   const handleDownload = async () => {
     if (!ready || downloading) return;
     setDownloading(true);
     try {
-      const url = await getClipUrl(projectId, short.id, { download: true });
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.rel = "noopener";
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
+      let result = await requestShortExport(short.id);
+      while (result.status === "processing") {
+        await sleep(EXPORT_POLL_INTERVAL_MS);
+        result = await getShortExportStatus(short.id);
+      }
+      if (result.status === "ready") {
+        triggerDownload(result.url);
+      } else {
+        toast.error("Export failed. Please try again.");
+      }
     } catch {
       toast.error("Download failed. Please try again.");
     } finally {
@@ -77,13 +101,14 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="relative aspect-[9/16] overflow-hidden bg-background">
         {clipUrl ? (
-          <video
-            src={clipUrl}
-            controls
-            autoPlay
-            playsInline
-            className="absolute inset-0 size-full bg-black object-cover"
-          />
+          <div className="absolute inset-0">
+            <ClipPlayer
+              src={clipUrl}
+              segments={short.segments}
+              style={short.captionStyle}
+              autoPlay
+            />
+          </div>
         ) : (
           <button
             type="button"
@@ -196,11 +221,29 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
             disabled={!ready || downloading}
           >
             {downloading ? <Loader2 className="animate-spin" /> : <Download />}
-            Download
+            {downloading ? "Exporting" : "Download"}
+          </Button>
+          {/* <a> never matches :disabled, so render a Link only once ready. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!ready}
+            nativeButton={!ready}
+            render={
+              ready ? (
+                <Link
+                  href={`/dashboard/projects/${projectId}/shorts/${short.id}/captions`}
+                />
+              ) : undefined
+            }
+          >
+            <Captions />
+            Captions
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            disabled={!ready}
             onClick={() => toast("Scheduling is coming soon.")}
           >
             <CalendarClock />

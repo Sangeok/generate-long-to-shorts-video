@@ -5,13 +5,10 @@ interface ClipUrlResponse {
 export async function getClipUrl(
   projectId: string,
   shortId: string,
-  options?: { download?: boolean },
 ): Promise<string> {
-  const query = options?.download ? "?download=1" : "";
-  const res = await fetch(
-    `/api/projects/${projectId}/shorts/${shortId}/clip-url${query}`,
-    { cache: "no-store" },
-  );
+  const res = await fetch(`/api/projects/${projectId}/shorts/${shortId}/clip-url`, {
+    cache: "no-store",
+  });
   if (!res.ok) {
     throw new Error("Failed to load clip URL");
   }
