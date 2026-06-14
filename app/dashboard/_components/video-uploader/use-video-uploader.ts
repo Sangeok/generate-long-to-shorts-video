@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import type { ProjectContentType, ProjectLanguage } from "@/features/project";
 import { createUploadUrl, startAnalysis } from "@/features/project/actions";
 
 export type UploadStatus =
@@ -55,6 +56,8 @@ export const useVideoUploader = () => {
   const videoKeyRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<UploadStatus>("idle");
+  const [contentType, setContentType] = useState<ProjectContentType>("talk");
+  const [language, setLanguage] = useState<ProjectLanguage>("en");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
@@ -147,6 +150,8 @@ export const useVideoUploader = () => {
       const { projectId } = await startAnalysis({
         videoKey: videoKeyRef.current,
         title: file.name,
+        contentType,
+        language,
         durationSec: meta?.duration ?? null,
         width: meta?.width ?? null,
         height: meta?.height ?? null,
@@ -166,6 +171,10 @@ export const useVideoUploader = () => {
   return {
     inputRef,
     status,
+    contentType,
+    setContentType,
+    language,
+    setLanguage,
     file,
     previewUrl,
     meta,

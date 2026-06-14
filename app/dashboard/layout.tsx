@@ -8,6 +8,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export default async function DashboardLayout({
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
         </header>
         {children}
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   );
 }

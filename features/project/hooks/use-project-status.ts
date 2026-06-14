@@ -6,7 +6,7 @@ import { getProjectStatus } from "../api/get-project-status";
 import type { ProjectStatus } from "../types";
 
 const POLL_INTERVAL_MS = 2000;
-const TERMINAL: ProjectStatus[] = ["transcribed", "failed"];
+const TERMINAL: ProjectStatus[] = ["completed", "failed"];
 
 export function useProjectStatus(
   projectId: string,

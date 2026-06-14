@@ -27,18 +27,30 @@ const STEPS: StepDef[] = [
     label: "Transcription ready",
     description: "Transcript and captions are ready.",
   },
+  {
+    label: "Finding best moments",
+    description: "Gemini is scoring the most engaging moments for shorts.",
+  },
+  {
+    label: "Shorts ready",
+    description: "Your short-video moments are ready.",
+  },
 ];
 
 function computeStepStates(status: ProjectStatus): StepState[] {
   switch (status) {
     case "uploaded":
-      return ["done", "pending", "pending"];
+      return ["done", "pending", "pending", "pending", "pending"];
     case "transcribing":
-      return ["done", "active", "pending"];
+      return ["done", "active", "pending", "pending", "pending"];
     case "transcribed":
-      return ["done", "done", "done"];
+      return ["done", "done", "done", "pending", "pending"];
+    case "generating_shorts":
+      return ["done", "done", "done", "active", "pending"];
+    case "completed":
+      return ["done", "done", "done", "done", "done"];
     case "failed":
-      return ["done", "failed", "pending"];
+      return ["done", "failed", "pending", "pending", "pending"];
   }
 }
 
@@ -91,13 +103,27 @@ export const TranscriptionProgress = ({
     initialError,
   );
   const refreshedRef = useRef(false);
+  const completedRef = useRef(false);
+  const transcriptReady =
+    status === "transcribed" ||
+    status === "generating_shorts" ||
+    status === "completed";
 
   useEffect(() => {
-    if (status === "transcribed" && !segments && !refreshedRef.current) {
+    if (transcriptReady && !segments && !refreshedRef.current) {
       refreshedRef.current = true;
       router.refresh();
     }
-  }, [status, segments, router]);
+  }, [transcriptReady, segments, router]);
+
+  // Once shorts are ready, re-render the server page so it swaps the progress
+  // view for the generated shorts.
+  useEffect(() => {
+    if (status === "completed" && !completedRef.current) {
+      completedRef.current = true;
+      router.refresh();
+    }
+  }, [status, router]);
 
   const states = computeStepStates(status);
 
@@ -141,9 +167,7 @@ export const TranscriptionProgress = ({
         })}
       </ol>
 
-      {status === "transcribed" && segments && (
-        <TranscriptPreview segments={segments} />
-      )}
+      {transcriptReady && segments && <TranscriptPreview segments={segments} />}
     </div>
   );
 };

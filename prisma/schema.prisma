@@ -75,6 +75,8 @@ model Project {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   videoKey    String
+  contentType String   @default("talk")
+  language    String   @default("en")
   status      String   @default("uploaded")
   durationSec Float?
   width       Int?
@@ -85,7 +87,31 @@ model Project {
   error       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  shorts      Short[]
 
   @@index([userId])
   @@map("project")
+}
+
+model Short {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  startSec     Float
+  endSec       Float
+  durationSec  Float
+  reason       String
+  seoScore     Int
+  captionsVtt  String
+  segments     Json
+  captionStyle Json?
+  clipKey      String?
+  renderError  String?
+  exportKey    String?
+  exportError  String?
+  createdAt    DateTime @default(now())
+
+  @@index([projectId])
+  @@map("short")
 }
