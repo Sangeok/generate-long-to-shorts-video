@@ -139,6 +139,7 @@ export function getShortDetailForUser(shortId: string, userId: string) {
       id: true,
       projectId: true,
       title: true,
+      durationSec: true,
       segments: true,
       captionStyle: true,
       clipKey: true,

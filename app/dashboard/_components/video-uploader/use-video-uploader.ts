@@ -50,14 +50,23 @@ function uploadToS3(
   });
 }
 
-export const useVideoUploader = () => {
+interface UseVideoUploaderOptions {
+  initialContentType: ProjectContentType;
+  initialLanguage: ProjectLanguage;
+}
+
+export const useVideoUploader = ({
+  initialContentType,
+  initialLanguage,
+}: UseVideoUploaderOptions) => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const videoKeyRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<UploadStatus>("idle");
-  const [contentType, setContentType] = useState<ProjectContentType>("talk");
-  const [language, setLanguage] = useState<ProjectLanguage>("en");
+  const [contentType, setContentType] =
+    useState<ProjectContentType>(initialContentType);
+  const [language, setLanguage] = useState<ProjectLanguage>(initialLanguage);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
