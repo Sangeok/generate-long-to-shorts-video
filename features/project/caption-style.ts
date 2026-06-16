@@ -64,7 +64,14 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
 // preview and the burn-in start and finish together.
 export const CAPTION_ANIM_MS = 180;
 
-const CAPTION_ANIMATIONS = ["none", "fade", "pop"] as const satisfies readonly CaptionAnimation[];
+const CAPTION_ANIMATIONS = [
+  "none",
+  "fade",
+  "pop",
+  "bounce",
+  "blur",
+  "zoom",
+] as const satisfies readonly CaptionAnimation[];
 
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/;
 
@@ -191,6 +198,12 @@ export function buildCaptionAnimationCss(
       return { animation: `caption-fade ${CAPTION_ANIM_MS}ms ease-out` };
     case "pop":
       return { animation: `caption-pop ${CAPTION_ANIM_MS}ms ease-out` };
+    case "bounce":
+      return { animation: `caption-bounce ${CAPTION_ANIM_MS}ms ease-out` };
+    case "blur":
+      return { animation: `caption-blur ${CAPTION_ANIM_MS}ms ease-out` };
+    case "zoom":
+      return { animation: `caption-zoom ${CAPTION_ANIM_MS}ms ease-out` };
     case "none":
       return {};
   }
@@ -205,6 +218,15 @@ export function buildCaptionAnimationTag(animation: CaptionAnimation): string {
       return `\\fad(${CAPTION_ANIM_MS},0)`;
     case "pop":
       return `\\fad(${CAPTION_ANIM_MS},0)\\fscx60\\fscy60\\t(0,${CAPTION_ANIM_MS},\\fscx100\\fscy100)`;
+    case "bounce": {
+      // Overshoot to 110% at 60% of the duration, then settle to 100%.
+      const peak = Math.round(CAPTION_ANIM_MS * 0.6);
+      return `\\fad(${CAPTION_ANIM_MS},0)\\fscx60\\fscy60\\t(0,${peak},\\fscx110\\fscy110)\\t(${peak},${CAPTION_ANIM_MS},\\fscx100\\fscy100)`;
+    }
+    case "blur":
+      return `\\fad(${CAPTION_ANIM_MS},0)\\blur2\\t(0,${CAPTION_ANIM_MS},\\blur0)`;
+    case "zoom":
+      return `\\fad(${CAPTION_ANIM_MS},0)\\fscx115\\fscy115\\t(0,${CAPTION_ANIM_MS},\\fscx100\\fscy100)`;
     case "none":
       return "";
   }

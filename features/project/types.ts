@@ -20,7 +20,13 @@ export type CaptionFont = "malgun-gothic" | "arial" | "impact" | "verdana";
 export type CaptionSize = "sm" | "md" | "lg";
 export type CaptionPosition = "top" | "middle" | "bottom";
 export type CaptionEdge = "outline" | "box";
-export type CaptionAnimation = "none" | "fade" | "pop";
+export type CaptionAnimation =
+  | "none"
+  | "fade"
+  | "pop"
+  | "bounce"
+  | "blur"
+  | "zoom";
 
 export interface CaptionStyle {
   font: CaptionFont;

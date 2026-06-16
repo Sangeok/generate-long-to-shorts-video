@@ -113,18 +113,25 @@ CapCut 등)도 결국 피사체 추적 기반 동적 크롭이다.
 
 ### 탐지 모델
 
-- **선택: `@mediapipe/tasks-vision`의 FaceDetector (WASM)**
-- 근거: `face-api`/`tfjs-node`는 네이티브 libtensorflow가 수백 MB라 무겁다.
-  MediaPipe tasks-vision은 WASM(수십 MB)으로 가볍고 Node에서 동작하며,
-  ffmpeg로 추출한 프레임(PNG)을 입력으로 받는 워크플로와 잘 맞는다. (가벼운
-  번들은 추후 워커 배포 시에도 유리하다.)
+- **선택: `@vladmandic/face-api` + `@tensorflow/tfjs-node`** (구현 시 확정)
+- 근거: 당초 후보였던 `@mediapipe/tasks-vision`은 **브라우저 우선** 패키지라
+  Node 단독 실행 시 JSDOM으로 `window`/`document`를 흉내내야 해 취약하다.
+  반면 face-api는 Node를 공식 지원하고, `tf.node.decodeImage`로 ffmpeg가 뽑은
+  PNG를 바로 텐서로 디코드해 `node-canvas` 같은 추가 네이티브 의존성이 없다.
+  MediaPipe를 고른 원래 이유(번들 크기)는 배포 보류(로컬 우선)로 사라졌다.
+  우리 요구는 "샷별 얼굴 중심 x 1개"라 TinyFaceDetector로 충분하다.
+- 격리: 탐지 구현은 `reframe.ts` 내부에만 있으므로, v2에서 정밀도가 필요하면
+  ONNX 등으로 내부 교체가 가능하다(공개 인터페이스 `planReframe` 불변).
 
 ### 동적 크롭 적용 방식 (ffmpeg)
 
-- **선택: 단일 패스 + 시간 의존 crop 표현식 (`eval=frame`)**
-- 근거: 씬별 오프셋을 `if(between(t,...))` 계단 함수로 표현해 한 번의 디코드/
-  인코드로 처리한다. 세그먼트 분할 후 concat 대비 임시 파일·키프레임 정렬
-  문제가 없고, 씬 수가 보통 30 미만이라 표현식 길이도 관리 가능하다.
+- **선택: 단일 패스 + 시간 의존 crop 표현식** (`crop`의 x는 기본적으로 매
+  프레임 평가되므로 `eval` 옵션 불필요 — 이 빌드엔 crop `eval`이 없음)
+- 근거: 오프셋을 `if(lt(t,b),...)` 계단 함수로 표현해 한 번의 디코드/인코드로
+  처리한다. 세그먼트 분할 후 concat 대비 임시 파일·키프레임 정렬 문제가 없다.
+- 추적 안정화: 명시적 씬 컷 파싱 대신 **샘플 중심값 스무딩(중앙값) +
+  deadband** 로 큰 이동에서만 크롭을 재배치한다(샷별 재구성 효과를 ffmpeg
+  scene 메타데이터 파싱의 취약성 없이 달성).
 
 ---
 
@@ -245,11 +252,12 @@ export interface ReframePlan {
   cropFilter: string | null;
 }
 
-// 2fps 샘플 프레임 추출 → 씬 컷 탐지 → 씬별 대표 얼굴 중심 x → 계단형
-// crop x 표현식 생성. 얼굴 신뢰도가 임계 미만인 씬이 과반이면 null 반환.
+// 2fps 샘플 프레임 추출 → 얼굴 중심 x 검출 → 스무딩+deadband 세그먼트 →
+// 계단형 crop x 표현식 생성. 얼굴 검출 프레임 비율이 임계 미만이면 null 반환.
 export async function planReframe(
   tempDir: string,
   sourceName: string,
+  clipId: string,
   start: number,
   end: number,
   sourceWidth: number,
@@ -257,17 +265,18 @@ export async function planReframe(
 ): Promise<ReframePlan>;
 ```
 
-구현 골자:
-1. `ffmpeg -ss start -t dur -i source -vf fps=2 frame_%04d.png` 로 샘플 추출.
-2. `ffmpeg ... -vf "select='gt(scene,0.4)',metadata=print" -f null -` stderr를
-   파싱해 씬 컷 타임스탬프 수집(없으면 단일 씬).
-3. MediaPipe FaceDetector로 각 프레임의 얼굴 bbox 중심 x 검출.
-4. 씬별로 신뢰 프레임의 중심 x **중앙값**을 취해 오프셋 1개로 고정(씬 내
-   지터 제거). cropW = `round(sourceHeight * 9 / 16)`,
-   x = `clamp(centerX - cropW/2, 0, sourceWidth - cropW)`.
-5. `crop=<cropW>:ih:x='if(between(t,t0,t1),x0, if(between(t,t1,t2),x1, ...))':0:eval=frame,scale=1080:1920`
-   형태의 표현식을 만들어 `cropFilter`로 반환.
-6. 얼굴이 전무하거나 저신뢰 씬이 과반 → `cropFilter: null`.
+구현 골자 (실제 구현 반영):
+1. `cropW = round(sourceHeight*9/16)`(짝수 보정). `cropW >= sourceWidth`(이미
+   세로/정사각)면 바로 `null` 반환 → 호출부 blur-fill.
+2. `ffmpeg -ss start -i source -t dur -vf fps=2,scale=640:-2 f_%05d.png` 로
+   다운스케일 샘플 추출(탐지 속도용, 중심은 비율로 원본 좌표 환산).
+3. face-api TinyFaceDetector로 프레임별 **가장 큰 얼굴**의 중심 x 검출.
+4. 검출 프레임 비율 < 0.3 → `null` 반환(blur-fill).
+5. 중심값을 슬라이딩 **중앙값**으로 스무딩 → x = `clamp(center - cropW/2, 0,
+   sourceWidth-cropW)` → 이전 세그먼트와 차이가 deadband(cropW·0.15) 초과일
+   때만 새 세그먼트 시작.
+6. `crop=w=<cropW>:h=ih:x=if(lt(t\,b1)\,x0\,...):y=0,scale=1080:1920` 표현식을
+   `cropFilter`로 반환(콤마는 ffmpeg 필터 구분자라 `\,`로 escape).
 
 **`render-clips.ts` 렌더 루프 (After, Phase 2):**
 ```ts
@@ -304,15 +313,22 @@ for (const short of shorts) {
 > `contentType === "cinematic"`인 프로젝트는 얼굴이 없을 확률이 높으므로
 > reframe를 건너뛰고 바로 blur-fill로 가는 최적화를 둘 수 있다(선택).
 
-### 4.4 의존성 추가
+### 4.4 의존성 및 설정 (구현 반영)
 
 ```jsonc
 // package.json (dependencies)
-"@mediapipe/tasks-vision": "^0.10.x"  // 버전은 설치 시점 최신 확인
+"@tensorflow/tfjs-node": "^4.22.0",
+"@vladmandic/face-api": "^1.7.15"   // 모델 가중치(tiny_face_detector)를 동봉
 ```
 
-`ffprobe`(ffmpeg 동봉)로 소스 해상도를 측정한다. 별도 npm 의존성은 불필요.
-로컬에 `ffmpeg`/`ffprobe`가 PATH에 있어야 한다(현재 구조와 동일).
+- `next.config.ts`의 `serverExternalPackages`에 두 패키지를 추가해 Next
+  번들러가 네이티브/node 빌드를 깨뜨리지 않도록 한다.
+- **tfjs-node Windows 바인딩 픽스**: Node 22에서 tfjs-node가 `tfjs_binding.node`
+  와 `tensorflow.dll`을 napi-v8/napi-v9 폴더에 엇갈리게 풀어 로드가 실패한다.
+  `scripts/fix-tfjs-node-win.mjs`가 두 파일을 양쪽 폴더로 미러링하며,
+  `postinstall`에서 자동 실행된다(비-Windows에선 no-op).
+- `ffprobe`(ffmpeg 동봉)로 소스 해상도를 측정. 로컬에 `ffmpeg`/`ffprobe`가
+  PATH에 있어야 한다(현재 구조와 동일).
 
 ---
 
@@ -359,14 +375,16 @@ for (const short of shorts) {
 
 ### 리스크
 
-- **동적 크롭 표현식 오류**: `eval=frame` 표현식이 잘못되면 ffmpeg가 실패.
-  per-short try/catch가 이미 있어 1개 숏 실패가 전체를 막지는 않으나, 표현식
-  생성 단위 검증 필요. (영향: 소, 가능성: 중)
-- **MediaPipe Node 통합**: tasks-vision의 Node WASM 초기화·프레임(PNG) 입력
-  처리 방식을 구현 전 확인. 모델 로드는 콜드 1회. (영향: 중, 가능성: 중)
-- **씬 컷 파싱**: `select='gt(scene,...)'` stderr 파싱이 ffmpeg 버전별 출력
-  포맷에 의존. 파싱 실패 시 단일 씬으로 안전 폴백하도록 구현. (영향: 소,
-  가능성: 중)
+- **동적 크롭 표현식**: 필터 syntax(escape 콤마, named 인자, crop은 per-frame
+  평가라 `eval` 미사용)는 ffmpeg testsrc로 검증 완료. per-short try/catch가
+  있어 1개 숏 실패가 전체를 막지 않음. 남은 것은 실제 영상에서 패닝이
+  의도대로 추적되는지 육안 확인. (영향: 소)
+- **face-api / tfjs-node 환경**: 이 Windows+Node22 박스에서 네이티브 바인딩
+  분리 글리치를 `postinstall` 스크립트로 해소. 재설치/다른 환경에서 재발
+  가능하나 postinstall이 자동 처리. (영향: 중, 가능성: 소)
+- **탐지 정확도**: TinyFaceDetector가 측면·저조도·작은 얼굴을 놓칠 수 있음.
+  중앙값 스무딩+deadband로 완화하고, 미검출이 과반이면 blur-fill로 폴백.
+  (영향: 소)
 - **단일 step 루프 + 처리시간**: `renderClips`가 모든 숏을 한 step에서 루프로
   처리한다(`render-clips.ts:93`). 탐지가 클립당 시간을 늘리므로 숏이 많으면
   로컬에서도 느려진다(로컬은 타임아웃 제약이 없어 기능상 문제는 아님).
@@ -413,6 +431,12 @@ ffmpeg를 `spawn`하는 Inngest 함수 3개(`transcribeVideo`의 cinematic proxy
 - `app/api/inngest/route.ts`: serve 제거(Vercel은 send 전용).
 - 워커는 **별도 Inngest 앱 id로 분리**(동일 함수의 중복 등록 사고 차단).
 - `@/` alias 런타임 해석(tsx/빌드)과 `server-only`(Node에선 throw 안 함) 확인.
+- **무거운 렌더 전용 의존성을 워커로 이전**: `@tensorflow/tfjs-node`,
+  `@vladmandic/face-api`는 렌더에서만 쓰이므로 워커 패키지로 옮긴다(현재는
+  로컬 우선이라 루트 package.json에 있어 Vercel 빌드에도 설치됨). 분리 시
+  `next.config.ts`의 `serverExternalPackages`와 `postinstall` 픽스도 함께 이전.
+- face-api 모델 경로는 현재 `process.cwd()/node_modules/...` 기준이므로 워커
+  컨테이너의 작업 디렉토리/모델 위치에 맞게 조정 필요.
 
 ### 배포 시 결정할 항목 (지금은 보류)
 - **워커 호스트**: Fly.io / Railway / Render / Modal·Fargate(종량) 중 택1.
