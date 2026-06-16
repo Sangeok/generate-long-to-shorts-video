@@ -63,6 +63,9 @@ const ANIMATIONS: { value: CaptionAnimation; label: string }[] = [
   { value: "none", label: "None" },
   { value: "fade", label: "Fade" },
   { value: "pop", label: "Pop" },
+  { value: "bounce", label: "Bounce" },
+  { value: "blur", label: "Blur" },
+  { value: "zoom", label: "Zoom" },
 ];
 
 const ColorSwatches = ({
@@ -226,22 +229,19 @@ export const CaptionStyleControls = ({
       </ControlRow>
 
       <ControlRow label="Animation">
-        <ToggleGroup
-          value={[style.animation]}
-          onValueChange={(value) => {
-            const animation = value[0] as CaptionAnimation | undefined;
-            if (animation) patch({ animation });
-          }}
-          variant="outline"
+        <NativeSelect
           size="sm"
-          spacing={0}
+          value={style.animation}
+          onChange={(event) =>
+            patch({ animation: event.target.value as CaptionAnimation })
+          }
         >
           {ANIMATIONS.map((animation) => (
-            <ToggleGroupItem key={animation.value} value={animation.value}>
+            <NativeSelectOption key={animation.value} value={animation.value}>
               {animation.label}
-            </ToggleGroupItem>
+            </NativeSelectOption>
           ))}
-        </ToggleGroup>
+        </NativeSelect>
       </ControlRow>
     </div>
   );

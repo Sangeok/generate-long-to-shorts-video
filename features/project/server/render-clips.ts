@@ -17,13 +17,13 @@ import {
 import { presignGetUrl } from "./s3-presign";
 import { uploadObject } from "./s3-upload";
 
-// Fit the whole frame into 9:16 with no cropping; fill the top/bottom band
-// with a blurred, zoomed copy of the same frame.
+// Fit the centre ~70% of the frame (sides cropped) into a 45%-height band,
+// filling the top/bottom with a blurred, zoomed copy of the same frame.
 const BLUR_FILL_FILTER =
   "split=2[bg][fg];" +
   "[bg]scale=1080:1920:force_original_aspect_ratio=increase," +
   "crop=1080:1920,gblur=sigma=20[bg];" +
-  "[fg]scale=1080:-2[fg];" +
+  "[fg]crop=ih*1.25:ih,scale=1080:864[fg];" +
   "[bg][fg]overlay=(W-w)/2:(H-h)/2";
 
 // The dev IAM user only allows s3:PutObject under uploads/*, so rendered
