@@ -10,17 +10,21 @@ import { VideoPreview } from "./video-preview";
 interface VideoUploaderProps {
   defaultContentType: ProjectContentType;
   defaultLanguage: ProjectLanguage;
+  defaultClipCount: number;
 }
 
 export const VideoUploader = ({
   defaultContentType,
   defaultLanguage,
+  defaultClipCount,
 }: VideoUploaderProps) => {
   const {
     inputRef,
     status,
     contentType,
     setContentType,
+    clipCount,
+    setClipCount,
     language,
     setLanguage,
     file,
@@ -41,6 +45,7 @@ export const VideoUploader = ({
   } = useVideoUploader({
     initialContentType: defaultContentType,
     initialLanguage: defaultLanguage,
+    initialClipCount: defaultClipCount,
   });
 
   return (
@@ -71,6 +76,7 @@ export const VideoUploader = ({
           />
           <UploadControlPanel
             contentType={contentType}
+            clipCount={clipCount}
             language={language}
             file={file}
             meta={meta}
@@ -79,6 +85,7 @@ export const VideoUploader = ({
             onAnalyze={analyze}
             onChooseDifferentFile={openPicker}
             onContentTypeChange={setContentType}
+            onClipCountChange={setClipCount}
             onLanguageChange={setLanguage}
             onReset={reset}
             onUpload={startUpload}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { normalizeClipCount } from "@/constants/generation-limits";
 import { getCurrentSession } from "@/lib/auth-server";
 
 import { deleteUserAccount, upsertUserSettings } from "../server";
@@ -12,6 +13,7 @@ const CONTENT_TYPES = ["talk", "cinematic"];
 interface UpdateGenerationDefaultsInput {
   language: string;
   contentType: string;
+  clipCount: number;
   captionStyle: unknown;
 }
 
@@ -28,6 +30,7 @@ export async function updateGenerationDefaults(
     contentType: CONTENT_TYPES.includes(input.contentType)
       ? input.contentType
       : "talk",
+    clipCount: normalizeClipCount(input.clipCount),
     captionStyle: input.captionStyle,
   });
 

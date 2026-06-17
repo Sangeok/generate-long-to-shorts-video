@@ -6,6 +6,10 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  CLIP_COUNT_OPTIONS,
+  normalizeClipCount,
+} from "@/constants/generation-limits";
 import { CaptionStyleControls, parseCaptionStyle } from "@/features/project";
 import type {
   CaptionStyle,
@@ -17,6 +21,7 @@ import { updateGenerationDefaults } from "@/features/settings/actions";
 interface GenerationDefaultsFormProps {
   language: string;
   contentType: string;
+  clipCount: number;
   captionStyle: unknown;
 }
 
@@ -33,6 +38,7 @@ const CONTENT_TYPES: { value: ProjectContentType; label: string }[] = [
 export const GenerationDefaultsForm = ({
   language: initialLanguage,
   contentType: initialContentType,
+  clipCount: initialClipCount,
   captionStyle: initialCaptionStyle,
 }: GenerationDefaultsFormProps) => {
   const [language, setLanguage] = useState<ProjectLanguage>(
@@ -44,12 +50,20 @@ export const GenerationDefaultsForm = ({
   const [style, setStyle] = useState<CaptionStyle>(() =>
     parseCaptionStyle(initialCaptionStyle),
   );
+  const [clipCount, setClipCount] = useState(() =>
+    normalizeClipCount(initialClipCount),
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateGenerationDefaults({ language, contentType, captionStyle: style });
+      await updateGenerationDefaults({
+        language,
+        contentType,
+        clipCount: normalizeClipCount(clipCount),
+        captionStyle: style,
+      });
       toast.success("Defaults saved.");
     } catch {
       toast.error("Couldn't save defaults.");
@@ -109,6 +123,28 @@ export const GenerationDefaultsForm = ({
           {CONTENT_TYPES.map((item) => (
             <ToggleGroupItem key={item.value} value={item.value}>
               {item.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+          Clip count
+        </span>
+        <ToggleGroup
+          value={[String(clipCount)]}
+          onValueChange={(value) => {
+            const next = value[0];
+            if (next) setClipCount(normalizeClipCount(next));
+          }}
+          variant="outline"
+          size="sm"
+          spacing={0}
+        >
+          {CLIP_COUNT_OPTIONS.map((count) => (
+            <ToggleGroupItem key={count} value={String(count)}>
+              {count}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

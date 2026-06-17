@@ -40,6 +40,7 @@ export default async function SettingsPage() {
       <GenerationDefaultsForm
         language={settings.language}
         contentType={settings.contentType}
+        clipCount={settings.clipCount}
         captionStyle={settings.captionStyle}
       />
 

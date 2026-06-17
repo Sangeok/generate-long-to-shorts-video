@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { normalizeClipCount } from "@/constants/generation-limits";
 import { getCurrentSession } from "@/lib/auth-server";
 import { inngest } from "@/lib/inngest";
 
@@ -41,6 +42,7 @@ interface StartAnalysisInput {
   title: string;
   contentType?: ProjectContentType;
   language?: ProjectLanguage;
+  clipCount?: number;
   durationSec?: number | null;
   width?: number | null;
   height?: number | null;
@@ -87,6 +89,7 @@ export async function startAnalysis(
     videoKey: input.videoKey,
     contentType: input.contentType === "cinematic" ? "cinematic" : "talk",
     language: input.language === "ko" ? "ko" : "en",
+    clipCount: normalizeClipCount(input.clipCount),
     durationSec: input.durationSec ?? null,
     width: input.width ?? null,
     height: input.height ?? null,

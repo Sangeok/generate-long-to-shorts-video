@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  DEFAULT_CLIP_COUNT,
+  normalizeClipCount,
+} from "@/constants/generation-limits";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
@@ -16,6 +20,7 @@ export async function getUserSettings(
   return {
     language: row?.language ?? DEFAULT_LANGUAGE,
     contentType: row?.contentType ?? DEFAULT_CONTENT_TYPE,
+    clipCount: normalizeClipCount(row?.clipCount ?? DEFAULT_CLIP_COUNT),
     captionStyle: row?.captionStyle ?? null,
   };
 }
@@ -23,6 +28,7 @@ export async function getUserSettings(
 interface UpsertUserSettingsInput {
   language: string;
   contentType: string;
+  clipCount: number;
   captionStyle: unknown;
 }
 
@@ -31,17 +37,20 @@ export async function upsertUserSettings(
   input: UpsertUserSettingsInput,
 ): Promise<void> {
   const captionStyle = input.captionStyle as Prisma.InputJsonValue;
+  const clipCount = normalizeClipCount(input.clipCount);
   await prisma.userSettings.upsert({
     where: { userId },
     create: {
       userId,
       language: input.language,
       contentType: input.contentType,
+      clipCount,
       captionStyle,
     },
     update: {
       language: input.language,
       contentType: input.contentType,
+      clipCount,
       captionStyle,
     },
   });

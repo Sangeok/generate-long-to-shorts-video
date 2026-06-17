@@ -29,6 +29,7 @@ model UserSettings {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   language     String   @default("en")
   contentType  String   @default("talk")
+  clipCount    Int      @default(5)
   captionStyle Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -91,6 +92,7 @@ model Project {
   videoKey    String
   contentType String   @default("talk")
   language    String   @default("en")
+  clipCount   Int      @default(5)
   status      String   @default("uploaded")
   durationSec Float?
   width       Int?

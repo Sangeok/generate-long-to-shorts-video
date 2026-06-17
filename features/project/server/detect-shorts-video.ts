@@ -13,7 +13,7 @@ import {
 
 import { getGeminiClient } from "@/lib/gemini";
 
-import { SHORTS_CONFIG } from "../config";
+import { SHORTS_CONFIG, type ShortsConfig } from "../config";
 import type {
   CaptionSegment,
   ProjectLanguage,
@@ -27,8 +27,6 @@ import {
   toShortClips,
 } from "./detect-shorts";
 import { downloadSource, runFfmpeg } from "./ffmpeg";
-
-type ShortsConfig = typeof SHORTS_CONFIG;
 
 export interface PreparedVideo {
   uri: string;

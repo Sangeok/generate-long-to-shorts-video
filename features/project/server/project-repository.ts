@@ -1,5 +1,6 @@
 import "server-only";
 
+import { normalizeClipCount } from "@/constants/generation-limits";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { deleteObjects } from "@/lib/s3";
@@ -23,6 +24,7 @@ interface CreateProjectInput {
   videoKey: string;
   contentType: ProjectContentType;
   language: ProjectLanguage;
+  clipCount: number;
   durationSec?: number | null;
   width?: number | null;
   height?: number | null;
@@ -36,6 +38,7 @@ export function createProject(input: CreateProjectInput) {
       videoKey: input.videoKey,
       contentType: input.contentType,
       language: input.language,
+      clipCount: normalizeClipCount(input.clipCount),
       status: "uploaded",
       durationSec: input.durationSec ?? null,
       width: input.width ?? null,
@@ -262,7 +265,12 @@ export function markPendingShortsFailed(projectId: string, error: string) {
 export function getProjectVideoKey(projectId: string) {
   return prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    select: { videoKey: true, contentType: true, language: true },
+    select: {
+      videoKey: true,
+      contentType: true,
+      language: true,
+      clipCount: true,
+    },
   });
 }
 

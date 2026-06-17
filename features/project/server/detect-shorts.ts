@@ -4,7 +4,7 @@ import { Type } from "@google/genai";
 
 import { getGeminiClient } from "@/lib/gemini";
 
-import { SHORTS_CONFIG } from "../config";
+import { SHORTS_CONFIG, type ShortsConfig } from "../config";
 import type {
   CaptionSegment,
   ProjectLanguage,
@@ -12,8 +12,6 @@ import type {
   ShortMoment,
 } from "../types";
 import { buildVtt, sliceSegments } from "./captions";
-
-type ShortsConfig = typeof SHORTS_CONFIG;
 
 // Instruct Gemini to write title/reason in the source video's language.
 export function languageInstruction(language: ProjectLanguage): string {
