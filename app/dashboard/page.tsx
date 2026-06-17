@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+import {
+  DEFAULT_CLIP_COUNT,
+  normalizeClipCount,
+} from "@/constants/generation-limits";
 import { getUserSettings } from "@/features/settings/server";
 import { getCurrentSession } from "@/lib/auth-server";
 import { VideoUploader } from "./_components/video-uploader/video-uploader";
@@ -16,10 +20,16 @@ export default async function DashboardPage() {
 
   const settings = session
     ? await getUserSettings(session.user.id)
-    : { language: "en", contentType: "talk", captionStyle: null };
+    : {
+        language: "en",
+        contentType: "talk",
+        clipCount: DEFAULT_CLIP_COUNT,
+        captionStyle: null,
+      };
   const defaultContentType =
     settings.contentType === "cinematic" ? "cinematic" : "talk";
   const defaultLanguage = settings.language === "ko" ? "ko" : "en";
+  const defaultClipCount = normalizeClipCount(settings.clipCount);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 py-12 sm:px-6 sm:py-16">
@@ -39,6 +49,7 @@ export default async function DashboardPage() {
       <VideoUploader
         defaultContentType={defaultContentType}
         defaultLanguage={defaultLanguage}
+        defaultClipCount={defaultClipCount}
       />
     </div>
   );

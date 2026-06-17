@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { normalizeClipCount } from "@/constants/generation-limits";
 import type { ProjectContentType, ProjectLanguage } from "@/features/project";
 import { createUploadUrl, startAnalysis } from "@/features/project/actions";
 
@@ -53,11 +54,13 @@ function uploadToS3(
 interface UseVideoUploaderOptions {
   initialContentType: ProjectContentType;
   initialLanguage: ProjectLanguage;
+  initialClipCount: number;
 }
 
 export const useVideoUploader = ({
   initialContentType,
   initialLanguage,
+  initialClipCount,
 }: UseVideoUploaderOptions) => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +70,9 @@ export const useVideoUploader = ({
   const [contentType, setContentType] =
     useState<ProjectContentType>(initialContentType);
   const [language, setLanguage] = useState<ProjectLanguage>(initialLanguage);
+  const [clipCount, setClipCount] = useState(() =>
+    normalizeClipCount(initialClipCount),
+  );
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
@@ -161,6 +167,7 @@ export const useVideoUploader = ({
         title: file.name,
         contentType,
         language,
+        clipCount: normalizeClipCount(clipCount),
         durationSec: meta?.duration ?? null,
         width: meta?.width ?? null,
         height: meta?.height ?? null,
@@ -182,6 +189,8 @@ export const useVideoUploader = ({
     status,
     contentType,
     setContentType,
+    clipCount,
+    setClipCount,
     language,
     setLanguage,
     file,

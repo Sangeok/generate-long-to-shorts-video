@@ -1,8 +1,10 @@
 import "server-only";
 
+import { normalizeClipCount } from "@/constants/generation-limits";
 import { getDeepgramClient } from "@/lib/deepgram";
 import { inngest } from "@/lib/inngest";
 
+import { SHORTS_CONFIG } from "../config";
 import type { ProjectLanguage } from "../types";
 import { buildSegments, buildVtt } from "./captions";
 import { detectShorts } from "./detect-shorts";
@@ -50,11 +52,15 @@ export const transcribeVideo = inngest.createFunction(
       updateProjectStatus(projectId, "transcribing"),
     );
 
-    const { videoKey, contentType, language } = await step.run(
+    const { videoKey, contentType, language, clipCount } = await step.run(
       "load-project",
       () => getProjectVideoKey(projectId),
     );
     const projectLanguage = language as ProjectLanguage;
+    const detectionConfig = {
+      ...SHORTS_CONFIG,
+      count: normalizeClipCount(clipCount),
+    };
 
     // Transcription and cinematic video prep are independent until the Gemini
     // call, so they run in parallel; prep usually dominates, hiding the
@@ -109,7 +115,11 @@ export const transcribeVideo = inngest.createFunction(
       contentType === "cinematic"
         ? step.run("prepare-video", async () => {
             const sourceUrl = await presignGetUrl(videoKey);
-            return prepareVideoForDetection(sourceUrl, projectId);
+            return prepareVideoForDetection(
+              sourceUrl,
+              projectId,
+              detectionConfig,
+            );
           })
         : Promise.resolve(null),
     ]);
@@ -126,8 +136,14 @@ export const transcribeVideo = inngest.createFunction(
             preparedVideo,
             captions.segments,
             projectLanguage,
+            detectionConfig,
           )
-        : detectShorts(captions.text, captions.segments, projectLanguage),
+        : detectShorts(
+            captions.text,
+            captions.segments,
+            projectLanguage,
+            detectionConfig,
+          ),
     );
 
     await step.run("persist-shorts", () => saveShorts(projectId, shorts));

@@ -3,12 +3,17 @@ import { Check, Loader2, RotateCcw, Sparkles, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  CLIP_COUNT_OPTIONS,
+  normalizeClipCount,
+} from "@/constants/generation-limits";
 import type { ProjectContentType, ProjectLanguage } from "@/features/project";
 
 import type { UploadStatus, VideoMeta } from "./use-video-uploader";
 
 interface UploadControlPanelProps {
   contentType: ProjectContentType;
+  clipCount: number;
   language: ProjectLanguage;
   file: File | null;
   meta: VideoMeta | null;
@@ -16,6 +21,7 @@ interface UploadControlPanelProps {
   status: UploadStatus;
   onAnalyze: () => void;
   onChooseDifferentFile: () => void;
+  onClipCountChange: (clipCount: number) => void;
   onContentTypeChange: (contentType: ProjectContentType) => void;
   onLanguageChange: (language: ProjectLanguage) => void;
   onReset: () => void;
@@ -88,6 +94,7 @@ const MetaCell = ({ label, value }: { label: string; value: string }) => {
 
 export const UploadControlPanel = ({
   contentType,
+  clipCount,
   language,
   file,
   meta,
@@ -95,6 +102,7 @@ export const UploadControlPanel = ({
   status,
   onAnalyze,
   onChooseDifferentFile,
+  onClipCountChange,
   onContentTypeChange,
   onLanguageChange,
   onReset,
@@ -235,6 +243,28 @@ export const UploadControlPanel = ({
             <p className="text-xs text-muted-foreground">
               Spoken language of the video — sets transcription accuracy.
             </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+              Clip count
+            </span>
+            <ToggleGroup
+              value={[String(clipCount)]}
+              onValueChange={(value) => {
+                const next = value[0];
+                if (next) onClipCountChange(normalizeClipCount(next));
+              }}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              disabled={status === "analyzing"}
+            >
+              {CLIP_COUNT_OPTIONS.map((count) => (
+                <ToggleGroupItem key={count} value={String(count)}>
+                  {count}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
           <div className="mt-auto flex flex-col gap-2">
             <Button

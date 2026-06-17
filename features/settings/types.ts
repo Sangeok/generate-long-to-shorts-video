@@ -4,5 +4,6 @@
 export interface GenerationDefaults {
   language: string;
   contentType: string;
+  clipCount: number;
   captionStyle: unknown;
 }
