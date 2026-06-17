@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { deleteObjects } from "@/lib/s3";
 
 import { parseCaptionStyle } from "../caption-style";
 import type {
@@ -91,8 +92,38 @@ export async function getProjectShortsForUser(
   return getShortsForProject(projectId);
 }
 
-export function deleteProjectForUser(projectId: string, userId: string) {
-  return prisma.project.deleteMany({ where: { id: projectId, userId } });
+type ProjectS3KeySource = {
+  videoKey: string;
+  shorts: { clipKey: string | null; exportKey: string | null }[];
+};
+
+function collectProjectS3Keys(project: ProjectS3KeySource): string[] {
+  return [
+    project.videoKey,
+    ...project.shorts.flatMap((short) => [short.clipKey, short.exportKey]),
+  ].filter((key): key is string => Boolean(key));
+}
+
+export async function deleteProjectForUser(
+  projectId: string,
+  userId: string,
+): Promise<void> {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId },
+    select: {
+      videoKey: true,
+      shorts: { select: { clipKey: true, exportKey: true } },
+    },
+  });
+
+  if (!project) {
+    return;
+  }
+
+  const s3Keys = collectProjectS3Keys(project);
+
+  await deleteObjects(s3Keys);
+  await prisma.project.deleteMany({ where: { id: projectId, userId } });
 }
 
 export async function getShortsForProject(
