@@ -4,9 +4,9 @@ import {
   DEFAULT_CLIP_COUNT,
   normalizeClipCount,
 } from "@/constants/generation-limits";
+import { VideoUploader } from "@/features/project";
 import { getUserSettings } from "@/features/settings/server";
 import { getCurrentSession } from "@/lib/auth-server";
-import { VideoUploader } from "./_components/video-uploader/video-uploader";
 
 export const dynamic = "force-dynamic";
 
