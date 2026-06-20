@@ -7,8 +7,8 @@ import {
   CLIP_COUNT_OPTIONS,
   normalizeClipCount,
 } from "@/constants/generation-limits";
-import type { ProjectContentType, ProjectLanguage } from "@/features/project";
 
+import type { ProjectContentType, ProjectLanguage } from "../../types";
 import type { UploadStatus, VideoMeta } from "./use-video-uploader";
 
 interface UploadControlPanelProps {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProjectContentType, ProjectLanguage } from "@/features/project";
+import type { ProjectContentType, ProjectLanguage } from "../../types";
 
 import { UploadControlPanel } from "./upload-control-panel";
 import { UploadDropzone } from "./upload-dropzone";

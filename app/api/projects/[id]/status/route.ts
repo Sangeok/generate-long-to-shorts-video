@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import type { ProjectStatusResponse } from "@/features/project";
 import { getProjectForUser } from "@/features/project/server";
-import type { ProjectStatusResponse } from "@/features/project/types";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export async function GET(

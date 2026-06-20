@@ -9,8 +9,9 @@ import {
 import { useRouter } from "next/navigation";
 
 import { normalizeClipCount } from "@/constants/generation-limits";
-import type { ProjectContentType, ProjectLanguage } from "@/features/project";
-import { createUploadUrl, startAnalysis } from "@/features/project/actions";
+
+import { createUploadUrl, startAnalysis } from "../../actions";
+import type { ProjectContentType, ProjectLanguage } from "../../types";
 
 export type UploadStatus =
   | "idle"
