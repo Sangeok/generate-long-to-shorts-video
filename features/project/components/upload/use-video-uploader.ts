@@ -11,7 +11,17 @@ import { useRouter } from "next/navigation";
 import { normalizeClipCount } from "@/constants/generation-limits";
 
 import { createUploadUrl, startAnalysis } from "../../actions";
-import type { ProjectContentType, ProjectLanguage } from "../../types";
+import {
+  getVideoMetaRejection,
+  MAX_ACTIVE_PROJECTS,
+  MAX_UPLOAD_BYTES,
+  MAX_VIDEO_DURATION_SEC,
+} from "../../project-limits";
+import type {
+  ProjectContentType,
+  ProjectLanguage,
+  StartAnalysisRejection,
+} from "../../types";
 
 export type UploadStatus =
   | "idle"
@@ -25,6 +35,19 @@ export interface VideoMeta {
   width: number;
   height: number;
 }
+
+const MAX_UPLOAD_GB = MAX_UPLOAD_BYTES / 1024 ** 3;
+const MAX_VIDEO_DURATION_HOURS = MAX_VIDEO_DURATION_SEC / 3600;
+
+// 서버 거부 사유 코드 → 사용자 메시지. 한도 수치는 상수에서 파생한다.
+const REJECTION_MESSAGES: Record<StartAnalysisRejection, string> = {
+  "missing-metadata":
+    "We couldn't read this video's metadata. Try a different file.",
+  "video-too-long": `Videos must be ${MAX_VIDEO_DURATION_HOURS} hours or shorter.`,
+  "portrait-video": "Only landscape videos are supported for now.",
+  "active-limit": `You already have ${MAX_ACTIVE_PROJECTS} projects processing. Wait for one to finish.`,
+  "daily-limit": "Daily upload limit reached. Try again tomorrow.",
+};
 
 function uploadToS3(
   uploadUrl: string,
@@ -89,6 +112,10 @@ export const useVideoUploader = ({
       setError("That file isn't a video. Try an MP4, MOV, or WebM.");
       return;
     }
+    if (candidate.size > MAX_UPLOAD_BYTES) {
+      setError(`Videos must be ${MAX_UPLOAD_GB}GB or smaller.`);
+      return;
+    }
 
     setError(null);
     setMeta(null);
@@ -130,8 +157,19 @@ export const useVideoUploader = ({
     selectFile(event.dataTransfer.files?.[0]);
   };
 
+  // 메타 위반은 업로드 전에 거르고, 거부 시 선택 전체를 초기화한다.
   const handleLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>) => {
     const video = event.currentTarget;
+    const rejection = getVideoMetaRejection(
+      video.duration,
+      video.videoWidth,
+      video.videoHeight,
+    );
+    if (rejection) {
+      reset();
+      setError(REJECTION_MESSAGES[rejection]);
+      return;
+    }
     setMeta({
       duration: video.duration,
       width: video.videoWidth,
@@ -148,6 +186,7 @@ export const useVideoUploader = ({
       const { uploadUrl, videoKey } = await createUploadUrl({
         filename: file.name,
         contentType: file.type,
+        fileSize: file.size,
       });
       await uploadToS3(uploadUrl, file, setProgress);
       videoKeyRef.current = videoKey;
@@ -163,7 +202,7 @@ export const useVideoUploader = ({
     setError(null);
     setStatus("analyzing");
     try {
-      const { projectId } = await startAnalysis({
+      const result = await startAnalysis({
         videoKey: videoKeyRef.current,
         title: file.name,
         contentType,
@@ -173,7 +212,12 @@ export const useVideoUploader = ({
         width: meta?.width ?? null,
         height: meta?.height ?? null,
       });
-      router.push(`/dashboard/projects/${projectId}`);
+      if (!result.ok) {
+        setError(REJECTION_MESSAGES[result.reason]);
+        setStatus("done");
+        return;
+      }
+      router.push(`/dashboard/projects/${result.projectId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start analysis.");
       setStatus("done");

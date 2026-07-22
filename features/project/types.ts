@@ -97,3 +97,17 @@ export type ShortExportStatus =
   | { status: "ready"; url: string }
   | { status: "processing" }
   | { status: "failed"; error: string };
+
+export type VideoMetaRejection =
+  | "missing-metadata"
+  | "video-too-long"
+  | "portrait-video";
+
+export type StartAnalysisRejection =
+  | VideoMetaRejection
+  | "active-limit"
+  | "daily-limit";
+
+export type StartAnalysisResult =
+  | { ok: true; projectId: string }
+  | { ok: false; reason: StartAnalysisRejection };

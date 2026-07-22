@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { deleteObjects } from "@/lib/s3";
 
 import { parseCaptionStyle } from "../caption-style";
+import { ACTIVE_PROJECT_STATUSES } from "../project-limits";
 import type {
   CaptionSegment,
   CaptionStyle,
@@ -44,6 +45,18 @@ export function createProject(input: CreateProjectInput) {
       width: input.width ?? null,
       height: input.height ?? null,
     },
+  });
+}
+
+export function countActiveProjectsForUser(userId: string) {
+  return prisma.project.count({
+    where: { userId, status: { in: ACTIVE_PROJECT_STATUSES } },
+  });
+}
+
+export function countProjectsCreatedSinceForUser(userId: string, since: Date) {
+  return prisma.project.count({
+    where: { userId, createdAt: { gte: since } },
   });
 }
 

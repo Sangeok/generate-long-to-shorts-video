@@ -4,6 +4,8 @@ export { detectShorts } from "./detect-shorts";
 export { exportShort } from "./export-short";
 export {
   clearShortExportError,
+  countActiveProjectsForUser,
+  countProjectsCreatedSinceForUser,
   createProject,
   deleteProjectForUser,
   getProjectForUser,
