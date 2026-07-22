@@ -8,7 +8,16 @@ import { inngest } from "@/lib/inngest";
 
 import { parseCaptionStyle } from "../caption-style";
 import {
+  DAILY_LIMIT_WINDOW_MS,
+  getVideoMetaRejection,
+  MAX_ACTIVE_PROJECTS,
+  MAX_DAILY_PROJECTS,
+  MAX_UPLOAD_BYTES,
+} from "../project-limits";
+import {
   clearShortExportError,
+  countActiveProjectsForUser,
+  countProjectsCreatedSinceForUser,
   createProject,
   deleteProjectForUser,
   getProjectShortsForUser,
@@ -25,11 +34,13 @@ import type {
   ProjectLanguage,
   ShortExportStatus,
   ShortRecord,
+  StartAnalysisResult,
 } from "../types";
 
 interface CreateUploadUrlInput {
   filename: string;
   contentType: string;
+  fileSize: number;
 }
 
 interface CreateUploadUrlResult {
@@ -58,6 +69,7 @@ function sanitizeFilename(name: string): string {
   return cleaned || "video";
 }
 
+// 방어선: 크기는 클라이언트에서 선검증되므로 throw를 유지한다.
 export async function createUploadUrl(
   input: CreateUploadUrlInput,
 ): Promise<CreateUploadUrlResult> {
@@ -68,19 +80,55 @@ export async function createUploadUrl(
   if (!input.contentType.startsWith("video/")) {
     throw new Error("Only video uploads are allowed");
   }
+  if (
+    !Number.isFinite(input.fileSize) ||
+    input.fileSize <= 0 ||
+    input.fileSize > MAX_UPLOAD_BYTES
+  ) {
+    throw new Error("File exceeds the upload size limit");
+  }
 
   const videoKey = `uploads/${session.user.id}/${crypto.randomUUID()}/${sanitizeFilename(input.filename)}`;
-  const uploadUrl = await presignPutUrl(videoKey, input.contentType);
+  const uploadUrl = await presignPutUrl(
+    videoKey,
+    input.contentType,
+    Math.trunc(input.fileSize),
+  );
 
   return { uploadUrl, videoKey };
 }
 
 export async function startAnalysis(
   input: StartAnalysisInput,
-): Promise<{ projectId: string }> {
+): Promise<StartAnalysisResult> {
   const session = await getCurrentSession();
+  // 인증 실패는 다른 액션과 동일하게 throw, 가드 실패만 유니온으로 반환한다.
   if (!session) {
     throw new Error("Unauthorized");
+  }
+
+  // 클라이언트 메타 기반 best-effort 검증.
+  const metaRejection = getVideoMetaRejection(
+    input.durationSec ?? null,
+    input.width ?? null,
+    input.height ?? null,
+  );
+  if (metaRejection) {
+    return { ok: false, reason: metaRejection };
+  }
+
+  const [activeCount, recentCount] = await Promise.all([
+    countActiveProjectsForUser(session.user.id),
+    countProjectsCreatedSinceForUser(
+      session.user.id,
+      new Date(Date.now() - DAILY_LIMIT_WINDOW_MS),
+    ),
+  ]);
+  if (activeCount >= MAX_ACTIVE_PROJECTS) {
+    return { ok: false, reason: "active-limit" };
+  }
+  if (recentCount >= MAX_DAILY_PROJECTS) {
+    return { ok: false, reason: "daily-limit" };
   }
 
   const project = await createProject({
@@ -100,7 +148,7 @@ export async function startAnalysis(
     data: { projectId: project.id },
   });
 
-  return { projectId: project.id };
+  return { ok: true, projectId: project.id };
 }
 
 export async function updateShortCaptions(
