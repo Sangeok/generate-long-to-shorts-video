@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getProjectStatus } from "../api/get-project-status";
+import { PROJECT_STATUS_META } from "../project-status";
 import type { ProjectStatus } from "../types";
 
 const POLL_INTERVAL_MS = 2000;
-const TERMINAL: ProjectStatus[] = ["completed", "failed"];
 
 export function useProjectStatus(
   projectId: string,
@@ -18,7 +18,7 @@ export function useProjectStatus(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (TERMINAL.includes(initialStatus)) return;
+    if (PROJECT_STATUS_META[initialStatus].terminal) return;
 
     let cancelled = false;
 
@@ -28,7 +28,7 @@ export function useProjectStatus(
         if (cancelled) return;
         setStatus(next.status);
         setError(next.error);
-        if (!TERMINAL.includes(next.status)) {
+        if (!PROJECT_STATUS_META[next.status].terminal) {
           timerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
         }
       } catch {

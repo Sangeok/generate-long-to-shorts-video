@@ -1,4 +1,6 @@
 export { parseCaptionStyle } from "./caption-style";
+export { parseSegments, parseSegmentsOrNull } from "./captions";
+export { formatTimecode } from "./format";
 export { CaptionEditor } from "./components/captions/caption-editor";
 export { CaptionStyleControls } from "./components/captions/caption-style-controls";
 export { TranscriptionProgress } from "./components/progress/transcription-progress";

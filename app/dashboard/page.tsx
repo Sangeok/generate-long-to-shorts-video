@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 
 import {
-  DEFAULT_CLIP_COUNT,
   normalizeClipCount,
+  normalizeContentType,
+  normalizeLanguage,
 } from "@/constants/generation-limits";
 import { VideoUploader } from "@/features/project";
-import { getUserSettings } from "@/features/settings/server";
+import {
+  DEFAULT_GENERATION_SETTINGS,
+  getUserSettings,
+} from "@/features/settings/server";
 import { getCurrentSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +24,10 @@ export default async function DashboardPage() {
 
   const settings = session
     ? await getUserSettings(session.user.id)
-    : {
-        language: "en",
-        contentType: "talk",
-        clipCount: DEFAULT_CLIP_COUNT,
-        captionStyle: null,
-      };
+    : DEFAULT_GENERATION_SETTINGS;
   const defaultContentType =
-    settings.contentType === "cinematic" ? "cinematic" : "talk";
-  const defaultLanguage = settings.language === "ko" ? "ko" : "en";
+    normalizeContentType(settings.contentType);
+  const defaultLanguage = normalizeLanguage(settings.language);
   const defaultClipCount = normalizeClipCount(settings.clipCount);
 
   return (

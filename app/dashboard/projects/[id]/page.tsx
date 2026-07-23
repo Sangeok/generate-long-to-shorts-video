@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { ShortsSection, TranscriptionProgress } from "@/features/project";
-import type { CaptionSegment, ProjectStatus } from "@/features/project";
+import {
+  formatTimecode,
+  parseSegmentsOrNull,
+  ShortsSection,
+  TranscriptionProgress,
+} from "@/features/project";
+import type { ProjectStatus } from "@/features/project";
 import {
   getProjectForUser,
   getShortsForProject,
@@ -14,14 +19,6 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Project | LongformShorts AI",
 };
-
-function formatDuration(seconds: number | null): string {
-  if (!seconds || !Number.isFinite(seconds)) return "--:--";
-  const total = Math.floor(seconds);
-  const minutes = Math.floor(total / 60);
-  const remaining = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
-}
 
 export default async function ProjectPage({
   params,
@@ -40,12 +37,11 @@ export default async function ProjectPage({
   }
 
   const status = project.status as ProjectStatus;
-  const segments =
-    (project.segments as unknown as CaptionSegment[] | null) ?? null;
+  const segments = parseSegmentsOrNull(project.segments);
   const shorts =
     status === "completed" ? await getShortsForProject(project.id) : [];
   const hasPendingClips = shorts.some(
-    (short) => !short.clipKey && !short.renderError,
+    (short) => short.renderStatus.status === "pending",
   );
   const eyebrow =
     status !== "completed"
@@ -62,8 +58,8 @@ export default async function ProjectPage({
           {project.title}
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
-          <span>Duration {formatDuration(project.durationSec)}</span>
-          {project.width && project.height && (
+          <span>Duration {formatTimecode(project.durationSec)}</span>
+          {project.width != null && project.height != null && (
             <span>
               {project.width} × {project.height}
             </span>

@@ -31,7 +31,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-import type { ProjectStatus, ProjectSummary } from "../../types";
+import { formatTimecode } from "../../format";
+import { PROJECT_STATUS_META } from "../../project-status";
+import type { ProjectSummary } from "../../types";
 
 interface ProjectCardProps {
   project: ProjectSummary;
@@ -46,28 +48,35 @@ const TIMELINE = Array.from({ length: 56 }, (_, index) =>
   Math.round(26 + Math.abs(Math.sin(index * 1.1) * 70)),
 );
 
-const PROCESSING_STATUSES: ProjectStatus[] = [
-  "uploaded",
-  "transcribing",
-  "transcribed",
-  "generating_shorts",
-];
+function isRenderingShorts(project: ProjectSummary): boolean {
+  return (
+    project.status === "completed" &&
+    project.readyShorts < project.totalShorts
+  );
+}
 
-const STAGE_LABELS: Record<ProjectStatus, string> = {
-  uploaded: "Queued",
-  transcribing: "Transcribing",
-  transcribed: "Transcribed",
-  generating_shorts: "Finding moments",
-  completed: "Ready",
-  failed: "Failed",
-};
+function getStatusLabel(project: ProjectSummary): string {
+  const isCompleted = project.status === "completed";
+  if (isCompleted && project.totalShorts > 0 && isRenderingShorts(project)) {
+    return `${project.readyShorts}/${project.totalShorts} ready`;
+  }
+  if (isCompleted && project.totalShorts === 0) {
+    return "No shorts";
+  }
+  return PROJECT_STATUS_META[project.status].label;
+}
 
-function formatDuration(seconds: number | null): string {
-  if (!seconds || !Number.isFinite(seconds)) return "--:--";
-  const total = Math.floor(seconds);
-  const minutes = Math.floor(total / 60);
-  const remaining = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+function getStatusDotClass(project: ProjectSummary): string {
+  if (project.status === "failed") {
+    return "bg-destructive";
+  }
+  if (PROJECT_STATUS_META[project.status].active || isRenderingShorts(project)) {
+    return "bg-primary animate-pulse";
+  }
+  if (project.status === "completed") {
+    return "bg-primary";
+  }
+  return "bg-muted-foreground";
 }
 
 function formatRelativeTime(iso: string): string {
@@ -93,26 +102,13 @@ export const ProjectCard = ({
 }: ProjectCardProps) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const isProcessing = PROCESSING_STATUSES.includes(project.status);
+  const isProcessing = PROJECT_STATUS_META[project.status].active;
   const isFailed = project.status === "failed";
   const isCompleted = project.status === "completed";
   const canExpand = isCompleted && project.totalShorts > 0;
-  const isRendering =
-    isCompleted && project.readyShorts < project.totalShorts;
 
-  const statusLabel = canExpand && isRendering
-    ? `${project.readyShorts}/${project.totalShorts} ready`
-    : isCompleted && project.totalShorts === 0
-      ? "No shorts"
-      : STAGE_LABELS[project.status];
-
-  const dotClass = isFailed
-    ? "bg-destructive"
-    : isProcessing || isRendering
-      ? "bg-primary animate-pulse"
-      : isCompleted
-        ? "bg-primary"
-        : "bg-muted-foreground";
+  const statusLabel = getStatusLabel(project);
+  const dotClass = getStatusDotClass(project);
 
   return (
     <article
@@ -138,7 +134,7 @@ export const ProjectCard = ({
           {project.contentType}
         </span>
         <span className="absolute right-4 top-4 z-10 font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
-          {formatDuration(project.durationSec)}
+          {formatTimecode(project.durationSec)}
         </span>
 
         <span className="absolute inset-0 z-10 grid place-items-center">
@@ -150,7 +146,7 @@ export const ProjectCard = ({
             <span className="flex flex-col items-center gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" />
               <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em]">
-                {STAGE_LABELS[project.status]}
+                {PROJECT_STATUS_META[project.status].label}
               </span>
             </span>
           ) : (

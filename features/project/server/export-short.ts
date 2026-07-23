@@ -7,11 +7,11 @@ import path from "node:path";
 import { inngest } from "@/lib/inngest";
 
 import { parseCaptionStyle } from "../caption-style";
-import type { CaptionSegment } from "../types";
+import { parseSegments } from "../captions";
 import { buildAss, splitSegmentsForCaptions } from "./captions";
 import { downloadSource, runFfmpeg } from "./ffmpeg";
 import {
-  getShortForExport,
+  getShortForExportOrThrow,
   setShortExportError,
   setShortExportKey,
 } from "./project-repository";
@@ -37,10 +37,10 @@ export const exportShort = inngest.createFunction(
     const { shortId } = event.data as { shortId: string };
 
     const short = await step.run("load-short", async () => {
-      const row = await getShortForExport(shortId);
+      const row = await getShortForExportOrThrow(shortId);
       return {
         ...row,
-        segments: row.segments as unknown as CaptionSegment[],
+        segments: parseSegments(row.segments),
       };
     });
     if (short.exportKey) {

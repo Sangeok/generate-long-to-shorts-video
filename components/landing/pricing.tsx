@@ -43,12 +43,12 @@ const PLANS = [
 
 function PlanCard({
   plan,
-  annual,
+  isAnnual,
 }: {
   plan: (typeof PLANS)[number];
-  annual: boolean;
+  isAnnual: boolean;
 }) {
-  const price = annual ? plan.annual : plan.monthly;
+  const price = isAnnual ? plan.annual : plan.monthly;
   return (
     <div
       className={cn(
@@ -77,7 +77,7 @@ function PlanCard({
         </span>
       </div>
       <p className="mt-1 h-4 font-mono text-[11px] text-primary">
-        {plan.highlighted && annual ? "billed annually — save 21%" : " "}
+        {plan.highlighted && isAnnual ? "billed annually — save 21%" : " "}
       </p>
 
       <Button
@@ -104,7 +104,7 @@ function PlanCard({
 }
 
 export function Pricing() {
-  const [annual, setAnnual] = React.useState(true);
+  const [isAnnual, setIsAnnual] = React.useState(true);
 
   return (
     <section id="pricing" className="scroll-mt-20">
@@ -122,20 +122,20 @@ export function Pricing() {
             <span
               className={cn(
                 "font-mono text-xs uppercase tracking-[0.15em] transition-colors",
-                annual ? "text-muted-foreground" : "text-foreground",
+                isAnnual ? "text-muted-foreground" : "text-foreground",
               )}
             >
               Monthly
             </span>
             <Switch
-              checked={annual}
-              onCheckedChange={(checked) => setAnnual(checked)}
+              checked={isAnnual}
+              onCheckedChange={(checked) => setIsAnnual(checked)}
               aria-label="Toggle annual billing"
             />
             <span
               className={cn(
                 "font-mono text-xs uppercase tracking-[0.15em] transition-colors",
-                annual ? "text-foreground" : "text-muted-foreground",
+                isAnnual ? "text-foreground" : "text-muted-foreground",
               )}
             >
               Annual
@@ -145,7 +145,7 @@ export function Pricing() {
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} annual={annual} />
+            <PlanCard key={plan.name} plan={plan} isAnnual={isAnnual} />
           ))}
         </div>
       </div>

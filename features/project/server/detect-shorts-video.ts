@@ -18,7 +18,6 @@ import type {
   CaptionSegment,
   ProjectLanguage,
   ShortClip,
-  ShortMoment,
 } from "../types";
 import {
   clampMoments,
@@ -204,7 +203,7 @@ export async function detectShortsFromUploadedVideo(
     throw new Error("Gemini returned an empty shorts response");
   }
 
-  const moments = clampMoments(JSON.parse(raw) as ShortMoment[], config);
+  const moments = clampMoments(JSON.parse(raw), config);
   const clips = toShortClips(moments, segments);
 
   // Delete only after success — a retried step must still find the file.

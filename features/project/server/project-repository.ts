@@ -1,12 +1,13 @@
 import "server-only";
 
 import { normalizeClipCount } from "@/constants/generation-limits";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma, Project } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { deleteObjects } from "@/lib/s3";
 
 import { parseCaptionStyle } from "../caption-style";
-import { ACTIVE_PROJECT_STATUSES } from "../project-limits";
+import { parseSegments } from "../captions";
+import { ACTIVE_PROJECT_STATUSES } from "../project-status";
 import type {
   CaptionSegment,
   CaptionStyle,
@@ -31,7 +32,7 @@ interface CreateProjectInput {
   height?: number | null;
 }
 
-export function createProject(input: CreateProjectInput) {
+export function createProject(input: CreateProjectInput): Promise<Project> {
   return prisma.project.create({
     data: {
       userId: input.userId,
@@ -60,7 +61,10 @@ export function countProjectsCreatedSinceForUser(userId: string, since: Date) {
   });
 }
 
-export function getProjectForUser(projectId: string, userId: string) {
+export function getProjectForUser(
+  projectId: string,
+  userId: string,
+): Promise<Project | null> {
   return prisma.project.findFirst({ where: { id: projectId, userId } });
 }
 
@@ -120,10 +124,11 @@ function collectProjectS3Keys(project: ProjectS3KeySource): string[] {
   ].filter((key): key is string => Boolean(key));
 }
 
+// 삭제 여부를 반환한다 — 없는/남의 프로젝트는 false(무음 no-op 방지).
 export async function deleteProjectForUser(
   projectId: string,
   userId: string,
-): Promise<void> {
+): Promise<boolean> {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
     select: {
@@ -133,13 +138,16 @@ export async function deleteProjectForUser(
   });
 
   if (!project) {
-    return;
+    return false;
   }
 
   const s3Keys = collectProjectS3Keys(project);
 
   await deleteObjects(s3Keys);
-  await prisma.project.deleteMany({ where: { id: projectId, userId } });
+  const result = await prisma.project.deleteMany({
+    where: { id: projectId, userId },
+  });
+  return result.count > 0;
 }
 
 export async function getShortsForProject(
@@ -157,16 +165,28 @@ export async function getShortsForProject(
     durationSec: short.durationSec,
     reason: short.reason,
     seoScore: short.seoScore,
-    segments: short.segments as unknown as CaptionSegment[],
+    segments: parseSegments(short.segments),
     captionStyle: parseCaptionStyle(short.captionStyle),
-    clipKey: short.clipKey,
-    renderError: short.renderError,
+    renderStatus: short.clipKey
+      ? { status: "ready", clipKey: short.clipKey }
+      : short.renderError
+        ? { status: "failed", error: short.renderError }
+        : { status: "pending" },
     exportKey: short.exportKey,
     exportError: short.exportError,
   }));
 }
 
-export function getShortForUser(shortId: string, userId: string) {
+export function getShortForUser(
+  shortId: string,
+  userId: string,
+): Promise<{
+  id: string;
+  title: string;
+  clipKey: string | null;
+  exportKey: string | null;
+  exportError: string | null;
+} | null> {
   return prisma.short.findFirst({
     where: { id: shortId, project: { userId } },
     select: {
@@ -179,7 +199,18 @@ export function getShortForUser(shortId: string, userId: string) {
   });
 }
 
-export function getShortDetailForUser(shortId: string, userId: string) {
+export function getShortDetailForUser(
+  shortId: string,
+  userId: string,
+): Promise<{
+  id: string;
+  projectId: string;
+  title: string;
+  durationSec: number;
+  segments: Prisma.JsonValue;
+  captionStyle: Prisma.JsonValue | null;
+  clipKey: string | null;
+} | null> {
   return prisma.short.findFirst({
     where: { id: shortId, project: { userId } },
     select: {
@@ -194,7 +225,9 @@ export function getShortDetailForUser(shortId: string, userId: string) {
   });
 }
 
-export function getShortsForRender(projectId: string) {
+export function getShortsForRender(
+  projectId: string,
+): Promise<{ id: string; startSec: number; endSec: number }[]> {
   return prisma.short.findMany({
     where: { projectId, clipKey: null },
     select: { id: true, startSec: true, endSec: true },
@@ -216,7 +249,14 @@ export function setShortRenderError(shortId: string, error: string) {
   });
 }
 
-export function getShortForExport(shortId: string) {
+export function getShortForExportOrThrow(shortId: string): Promise<{
+  id: string;
+  projectId: string;
+  clipKey: string | null;
+  exportKey: string | null;
+  segments: Prisma.JsonValue;
+  captionStyle: Prisma.JsonValue | null;
+}> {
   return prisma.short.findUniqueOrThrow({
     where: { id: shortId },
     select: {
@@ -275,7 +315,12 @@ export function markPendingShortsFailed(projectId: string, error: string) {
   });
 }
 
-export function getProjectVideoKey(projectId: string) {
+export function getProjectProcessingInputsOrThrow(projectId: string): Promise<{
+  videoKey: string;
+  contentType: string;
+  language: string;
+  clipCount: number;
+}> {
   return prisma.project.findUniqueOrThrow({
     where: { id: projectId },
     select: {
@@ -299,7 +344,7 @@ export function saveTranscription(
   transcript: TranscriptData,
   captionsVtt: string,
   segments: CaptionSegment[],
-) {
+): Promise<Project> {
   return prisma.project.update({
     where: { id: projectId },
     data: {
@@ -312,7 +357,10 @@ export function saveTranscription(
   });
 }
 
-export function saveShorts(projectId: string, shorts: ShortClip[]) {
+export function saveShorts(
+  projectId: string,
+  shorts: ShortClip[],
+): Promise<[Prisma.BatchPayload, Prisma.BatchPayload, Project]> {
   return prisma.$transaction([
     prisma.short.deleteMany({ where: { projectId } }),
     prisma.short.createMany({

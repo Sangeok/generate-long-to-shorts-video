@@ -1,3 +1,8 @@
+import type {
+  PROJECT_CONTENT_TYPES,
+  PROJECT_LANGUAGES,
+} from "@/constants/generation-limits";
+
 export type ProjectStatus =
   | "uploaded"
   | "transcribing"
@@ -6,9 +11,9 @@ export type ProjectStatus =
   | "completed"
   | "failed";
 
-export type ProjectContentType = "talk" | "cinematic";
+export type ProjectContentType = (typeof PROJECT_CONTENT_TYPES)[number]["value"];
 
-export type ProjectLanguage = "ko" | "en";
+export type ProjectLanguage = (typeof PROJECT_LANGUAGES)[number]["value"];
 
 export interface CaptionSegment {
   start: number;
@@ -63,6 +68,13 @@ export interface ShortClip extends ShortMoment {
   segments: CaptionSegment[];
 }
 
+// Render lifecycle as a discriminated union so contradictory combinations
+// (ready + failed at once) are unrepresentable.
+export type ShortRenderStatus =
+  | { status: "pending" }
+  | { status: "ready"; clipKey: string }
+  | { status: "failed"; error: string };
+
 export interface ShortRecord {
   id: string;
   title: string;
@@ -73,8 +85,7 @@ export interface ShortRecord {
   seoScore: number;
   segments: CaptionSegment[];
   captionStyle: CaptionStyle;
-  clipKey: string | null;
-  renderError: string | null;
+  renderStatus: ShortRenderStatus;
   exportKey: string | null;
   exportError: string | null;
 }
@@ -111,3 +122,7 @@ export type StartAnalysisRejection =
 export type StartAnalysisResult =
   | { ok: true; projectId: string }
   | { ok: false; reason: StartAnalysisRejection };
+
+export type DeleteProjectResult =
+  | { ok: true }
+  | { ok: false; reason: "not-found" };

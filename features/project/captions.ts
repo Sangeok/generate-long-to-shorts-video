@@ -1,5 +1,28 @@
 import type { CaptionSegment } from "./types";
 
+// Normalizes untrusted JSON (DB column) into valid segments, mirroring
+// parseCaptionStyle — invalid entries drop at the boundary instead of
+// failing deep in the render pipeline.
+export function parseSegments(value: unknown): CaptionSegment[] {
+  if (!Array.isArray(value)) return [];
+  const segments: CaptionSegment[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const raw = item as Partial<Record<keyof CaptionSegment, unknown>>;
+    if (typeof raw.start !== "number" || !Number.isFinite(raw.start)) continue;
+    if (typeof raw.end !== "number" || !Number.isFinite(raw.end)) continue;
+    if (typeof raw.text !== "string") continue;
+    segments.push({ start: raw.start, end: raw.end, text: raw.text });
+  }
+  return segments;
+}
+
+// Project.segments(Json?)는 null이 "전사 전"을 의미하므로 null을 보존한다.
+export function parseSegmentsOrNull(value: unknown): CaptionSegment[] | null {
+  if (value === null || value === undefined) return null;
+  return parseSegments(value);
+}
+
 // Shared by the browser caption overlay and the FFmpeg burn-in pass so the
 // preview line breaks match the exported clip.
 
