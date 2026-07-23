@@ -62,7 +62,7 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
 
 // One duration drives both the CSS keyframe and the libass override so the
 // preview and the burn-in start and finish together.
-export const CAPTION_ANIM_MS = 180;
+const CAPTION_ANIM_MS = 180;
 
 const CAPTION_ANIMATIONS = [
   "none",

@@ -1,5 +1,5 @@
-export const MIN_CLIP_COUNT = 1;
-export const MAX_CLIP_COUNT = 5;
+const MIN_CLIP_COUNT = 1;
+const MAX_CLIP_COUNT = 5;
 export const DEFAULT_CLIP_COUNT = 5;
 export const CLIP_COUNT_OPTIONS = [1, 2, 3, 4, 5] as const;
 

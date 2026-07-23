@@ -1,6 +1,5 @@
 import "server-only";
 
-export { detectShorts } from "./detect-shorts";
 export { exportShort } from "./export-short";
 export {
   clearShortExportError,
@@ -11,14 +10,9 @@ export {
   getProjectForUser,
   getProjectShortsForUser,
   getProjectsForUser,
-  getProjectProcessingInputsOrThrow,
   getShortDetailForUser,
   getShortForUser,
   getShortsForProject,
-  markProjectFailed,
-  saveShorts,
-  saveTranscription,
-  updateProjectStatus,
   updateShortCaptionData,
 } from "./project-repository";
 export { renderClips } from "./render-clips";

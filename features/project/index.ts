@@ -9,12 +9,9 @@ export { VideoUploader } from "./components/upload/video-uploader";
 export { VideoLibrary } from "./components/videos/video-library";
 export { VideoLibraryEmpty } from "./components/videos/video-library-empty";
 export type {
-  CaptionSegment,
   CaptionStyle,
   ProjectContentType,
   ProjectLanguage,
   ProjectStatus,
   ProjectStatusResponse,
-  ProjectSummary,
-  ShortRecord,
 } from "./types";
