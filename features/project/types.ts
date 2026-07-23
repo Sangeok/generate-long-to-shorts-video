@@ -70,7 +70,7 @@ export interface ShortClip extends ShortMoment {
 
 // Render lifecycle as a discriminated union so contradictory combinations
 // (ready + failed at once) are unrepresentable.
-export type ShortRenderStatus =
+type ShortRenderStatus =
   | { status: "pending" }
   | { status: "ready"; clipKey: string }
   | { status: "failed"; error: string };
