@@ -1,3 +1,5 @@
+// 브라우저 전용: 상대 경로 fetch이므로 Server Component에서 import하면
+// 컴파일은 통과하지만 런타임에 URL 파싱 오류가 난다.
 import type { ShortRecord } from "../types";
 
 interface ShortsResponse {

@@ -8,7 +8,7 @@ import { inngest } from "@/lib/inngest";
 
 import { downloadSource, runFfmpeg } from "./ffmpeg";
 import {
-  getProjectVideoKey,
+  getProjectProcessingInputsOrThrow,
   getShortsForRender,
   markPendingShortsFailed,
   setShortClipKey,
@@ -98,7 +98,7 @@ export const renderClips = inngest.createFunction(
     // Single step: the downloaded source lives in a temp dir that would not
     // survive across separate step invocations.
     const results = await step.run("render-clips", async () => {
-      const { videoKey } = await getProjectVideoKey(projectId);
+      const { videoKey } = await getProjectProcessingInputsOrThrow(projectId);
       const sourceUrl = await presignGetUrl(videoKey);
       const tempDir = await mkdtemp(path.join(os.tmpdir(), "clips-"));
       const sourceName = "source.mp4";

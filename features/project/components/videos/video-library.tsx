@@ -30,8 +30,13 @@ export const VideoLibrary = ({
     if (expandedId === id) setExpandedId(null);
 
     try {
-      await deleteProject(id);
-      toast.success("Video deleted.");
+      const result = await deleteProject(id);
+      if (result.ok) {
+        toast.success("Video deleted.");
+      } else {
+        // 이미 삭제된(또는 소유하지 않은) 항목: 제거를 유지하고 복원하지 않는다.
+        toast.info("This video was already deleted.");
+      }
     } catch {
       setProjects(previous);
       toast.error("Couldn't delete the video. Please try again.");

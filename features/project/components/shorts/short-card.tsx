@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { getShortExportStatus, requestShortExport } from "../../actions";
 import { getClipUrl } from "../../api/get-clip-url";
+import { formatTimecode } from "../../format";
 import type { ShortRecord } from "../../types";
 import { ClipPlayer } from "../captions/clip-player";
 
@@ -24,13 +25,6 @@ interface ShortCardProps {
   projectId: string;
   short: ShortRecord;
   rank: number;
-}
-
-function formatTimecode(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 // Deterministic waveform heights — a cinematic motif, not real audio data.
@@ -55,30 +49,30 @@ function triggerDownload(url: string): void {
 
 export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
   const [clipUrl, setClipUrl] = useState<string | null>(null);
-  const [loadingPlay, setLoadingPlay] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [isLoadingPlay, setIsLoadingPlay] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const isTopPick = rank === 1;
-  const ready = Boolean(short.clipKey);
-  const failed = Boolean(short.renderError);
+  const isReady = short.renderStatus.status === "ready";
+  const isFailed = short.renderStatus.status === "failed";
 
   const handlePlay = async () => {
-    if (!ready || clipUrl || loadingPlay) return;
-    setLoadingPlay(true);
+    if (!isReady || clipUrl || isLoadingPlay) return;
+    setIsLoadingPlay(true);
     try {
       setClipUrl(await getClipUrl(projectId, short.id));
     } catch {
       toast.error("Couldn't load the clip. Please try again.");
     } finally {
-      setLoadingPlay(false);
+      setIsLoadingPlay(false);
     }
   };
 
   // Captions are burned in on demand: request an export, poll until the
   // burned file is ready, then download it.
   const handleDownload = async () => {
-    if (!ready || downloading) return;
-    setDownloading(true);
+    if (!isReady || isDownloading) return;
+    setIsDownloading(true);
     try {
       let result = await requestShortExport(short.id);
       while (result.status === "processing") {
@@ -93,7 +87,7 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
     } catch {
       toast.error("Download failed. Please try again.");
     } finally {
-      setDownloading(false);
+      setIsDownloading(false);
     }
   };
 
@@ -113,8 +107,8 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
           <button
             type="button"
             onClick={handlePlay}
-            disabled={!ready}
-            aria-label={ready ? `Play ${short.title}` : short.title}
+            disabled={!isReady}
+            aria-label={isReady ? `Play ${short.title}` : short.title}
             className="group/poster absolute inset-0 block text-left disabled:cursor-default"
           >
             <span
@@ -139,13 +133,13 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
             </span>
 
             <span className="absolute inset-0 z-10 grid place-items-center">
-              {failed ? (
+              {isFailed ? (
                 <span className="grid size-16 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive">
                   <AlertTriangle className="size-6" />
                 </span>
-              ) : ready ? (
+              ) : isReady ? (
                 <span className="grid size-16 place-items-center rounded-full border border-border bg-background/55 text-foreground backdrop-blur-sm transition-colors duration-200 group-hover/poster:border-transparent group-hover/poster:bg-primary group-hover/poster:text-primary-foreground">
-                  {loadingPlay ? (
+                  {isLoadingPlay ? (
                     <Loader2 className="size-6 animate-spin" />
                   ) : (
                     <Play className="size-6 translate-x-0.5 fill-current" />
@@ -208,7 +202,7 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
         </div>
 
         <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-          {failed
+          {isFailed
             ? "This clip failed to render. Other clips are unaffected."
             : short.reason}
         </p>
@@ -218,19 +212,19 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
             variant="outline"
             size="sm"
             onClick={handleDownload}
-            disabled={!ready || downloading}
+            disabled={!isReady || isDownloading}
           >
-            {downloading ? <Loader2 className="animate-spin" /> : <Download />}
-            {downloading ? "Exporting" : "Download"}
+            {isDownloading ? <Loader2 className="animate-spin" /> : <Download />}
+            {isDownloading ? "Exporting" : "Download"}
           </Button>
           {/* <a> never matches :disabled, so render a Link only once ready. */}
           <Button
             variant="ghost"
             size="sm"
-            disabled={!ready}
-            nativeButton={!ready}
+            disabled={!isReady}
+            nativeButton={!isReady}
             render={
-              ready ? (
+              isReady ? (
                 <Link
                   href={`/dashboard/projects/${projectId}/shorts/${short.id}/captions`}
                 />
@@ -243,7 +237,7 @@ export const ShortCard = ({ projectId, short, rank }: ShortCardProps) => {
           <Button
             variant="ghost"
             size="sm"
-            disabled={!ready}
+            disabled={!isReady}
             onClick={() => toast("Scheduling is coming soon.")}
           >
             <CalendarClock />

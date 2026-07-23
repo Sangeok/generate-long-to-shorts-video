@@ -14,7 +14,7 @@ interface ShortsSectionProps {
 const POLL_INTERVAL_MS = 4000;
 
 function hasPending(shorts: ShortRecord[]): boolean {
-  return shorts.some((short) => !short.clipKey && !short.renderError);
+  return shorts.some((short) => short.renderStatus.status === "pending");
 }
 
 export const ShortsSection = ({
@@ -24,8 +24,8 @@ export const ShortsSection = ({
   const [shorts, setShorts] = useState(initialShorts);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clips render after the project completes, so poll until every clip has
-  // landed (clipKey) or failed (renderError).
+  // Clips render after the project completes, so poll until no short's
+  // renderStatus is still "pending".
   useEffect(() => {
     if (!hasPending(shorts)) return;
 
@@ -53,7 +53,9 @@ export const ShortsSection = ({
     };
   }, [projectId, shorts]);
 
-  const readyCount = shorts.filter((short) => short.clipKey).length;
+  const readyCount = shorts.filter(
+    (short) => short.renderStatus.status === "ready",
+  ).length;
 
   return (
     <section className="flex flex-col gap-6">

@@ -14,7 +14,7 @@ import {
   prepareVideoForDetection,
 } from "./detect-shorts-video";
 import {
-  getProjectVideoKey,
+  getProjectProcessingInputsOrThrow,
   markProjectFailed,
   saveShorts,
   saveTranscription,
@@ -54,7 +54,7 @@ export const transcribeVideo = inngest.createFunction(
 
     const { videoKey, contentType, language, clipCount } = await step.run(
       "load-project",
-      () => getProjectVideoKey(projectId),
+      () => getProjectProcessingInputsOrThrow(projectId),
     );
     const projectLanguage = language as ProjectLanguage;
     const detectionConfig = {

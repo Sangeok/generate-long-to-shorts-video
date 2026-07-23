@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 import { getProjectShorts } from "../../actions";
+import { formatTimecode } from "../../format";
 import type { ShortRecord } from "../../types";
 
 interface ProjectShortsShelfProps {
@@ -14,19 +15,12 @@ interface ProjectShortsShelfProps {
   className?: string;
 }
 
-function formatTimecode(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 export const ProjectShortsShelf = ({
   projectId,
   className,
 }: ProjectShortsShelfProps) => {
   const [shorts, setShorts] = useState<ShortRecord[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [isFailed, setIsFailed] = useState(false);
 
   // The shelf only mounts once its card expands, so load on mount.
   useEffect(() => {
@@ -36,7 +30,7 @@ export const ProjectShortsShelf = ({
         if (!cancelled) setShorts(result);
       })
       .catch(() => {
-        if (!cancelled) setFailed(true);
+        if (!cancelled) setIsFailed(true);
       });
     return () => {
       cancelled = true;
@@ -67,7 +61,7 @@ export const ProjectShortsShelf = ({
         </Link>
       </div>
 
-      {failed ? (
+      {isFailed ? (
         <p className="py-4 text-sm text-muted-foreground">
           Couldn&apos;t load these shorts. Open the project to try again.
         </p>
@@ -101,8 +95,8 @@ interface ShortThumbProps {
 }
 
 const ShortThumb = ({ projectId, short, rank }: ShortThumbProps) => {
-  const ready = Boolean(short.clipKey);
-  const failed = Boolean(short.renderError);
+  const isReady = short.renderStatus.status === "ready";
+  const isFailed = short.renderStatus.status === "failed";
   const isTopPick = rank === 1;
 
   return (
@@ -128,9 +122,9 @@ const ShortThumb = ({ projectId, short, rank }: ShortThumbProps) => {
         </span>
 
         <span className="absolute inset-0 z-10 grid place-items-center text-muted-foreground">
-          {failed ? (
+          {isFailed ? (
             <AlertTriangle className="size-5 text-destructive" />
-          ) : ready ? (
+          ) : isReady ? (
             <span className="grid size-9 place-items-center rounded-full border border-border bg-background/55 text-foreground backdrop-blur-sm transition-colors duration-200 group-hover/thumb:border-transparent group-hover/thumb:bg-primary group-hover/thumb:text-primary-foreground">
               <Play className="size-4 translate-x-px fill-current" />
             </span>

@@ -11,7 +11,7 @@ export {
   getProjectForUser,
   getProjectShortsForUser,
   getProjectsForUser,
-  getProjectVideoKey,
+  getProjectProcessingInputsOrThrow,
   getShortDetailForUser,
   getShortForUser,
   getShortsForProject,

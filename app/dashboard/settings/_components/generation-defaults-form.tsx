@@ -9,6 +9,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   CLIP_COUNT_OPTIONS,
   normalizeClipCount,
+  normalizeContentType,
+  normalizeLanguage,
+  PROJECT_CONTENT_TYPES,
+  PROJECT_LANGUAGES,
 } from "@/constants/generation-limits";
 import { CaptionStyleControls, parseCaptionStyle } from "@/features/project";
 import type {
@@ -25,27 +29,17 @@ interface GenerationDefaultsFormProps {
   captionStyle: unknown;
 }
 
-const LANGUAGES: { value: ProjectLanguage; label: string }[] = [
-  { value: "en", label: "English" },
-  { value: "ko", label: "한국어" },
-];
-
-const CONTENT_TYPES: { value: ProjectContentType; label: string }[] = [
-  { value: "talk", label: "Talk" },
-  { value: "cinematic", label: "Cinematic" },
-];
-
 export const GenerationDefaultsForm = ({
   language: initialLanguage,
   contentType: initialContentType,
   clipCount: initialClipCount,
   captionStyle: initialCaptionStyle,
 }: GenerationDefaultsFormProps) => {
-  const [language, setLanguage] = useState<ProjectLanguage>(
-    initialLanguage === "ko" ? "ko" : "en",
+  const [language, setLanguage] = useState<ProjectLanguage>(() =>
+    normalizeLanguage(initialLanguage),
   );
-  const [contentType, setContentType] = useState<ProjectContentType>(
-    initialContentType === "cinematic" ? "cinematic" : "talk",
+  const [contentType, setContentType] = useState<ProjectContentType>(() =>
+    normalizeContentType(initialContentType),
   );
   const [style, setStyle] = useState<CaptionStyle>(() =>
     parseCaptionStyle(initialCaptionStyle),
@@ -98,7 +92,7 @@ export const GenerationDefaultsForm = ({
           size="sm"
           spacing={0}
         >
-          {LANGUAGES.map((item) => (
+          {PROJECT_LANGUAGES.map((item) => (
             <ToggleGroupItem key={item.value} value={item.value}>
               {item.label}
             </ToggleGroupItem>
@@ -120,7 +114,7 @@ export const GenerationDefaultsForm = ({
           size="sm"
           spacing={0}
         >
-          {CONTENT_TYPES.map((item) => (
+          {PROJECT_CONTENT_TYPES.map((item) => (
             <ToggleGroupItem key={item.value} value={item.value}>
               {item.label}
             </ToggleGroupItem>

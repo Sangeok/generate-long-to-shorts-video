@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { normalizeClipCount } from "@/constants/generation-limits";
+import {
+  normalizeClipCount,
+  normalizeContentType,
+  normalizeLanguage,
+} from "@/constants/generation-limits";
 import { getCurrentSession } from "@/lib/auth-server";
 import { inngest } from "@/lib/inngest";
 
@@ -30,6 +34,7 @@ import {
 import type {
   CaptionSegment,
   CaptionStyle,
+  DeleteProjectResult,
   ProjectContentType,
   ProjectLanguage,
   ShortExportStatus,
@@ -135,8 +140,8 @@ export async function startAnalysis(
     userId: session.user.id,
     title: input.title,
     videoKey: input.videoKey,
-    contentType: input.contentType === "cinematic" ? "cinematic" : "talk",
-    language: input.language === "ko" ? "ko" : "en",
+    contentType: normalizeContentType(input.contentType),
+    language: normalizeLanguage(input.language),
     clipCount: normalizeClipCount(input.clipCount),
     durationSec: input.durationSec ?? null,
     width: input.width ?? null,
@@ -263,12 +268,15 @@ export async function getProjectShorts(
   return shorts;
 }
 
-export async function deleteProject(projectId: string): Promise<void> {
+export async function deleteProject(
+  projectId: string,
+): Promise<DeleteProjectResult> {
   const session = await getCurrentSession();
   if (!session) {
     throw new Error("Unauthorized");
   }
 
-  await deleteProjectForUser(projectId, session.user.id);
+  const deleted = await deleteProjectForUser(projectId, session.user.id);
   revalidatePath("/dashboard/videos");
+  return deleted ? { ok: true } : { ok: false, reason: "not-found" };
 }

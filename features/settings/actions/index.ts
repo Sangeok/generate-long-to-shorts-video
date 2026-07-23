@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
-import { normalizeClipCount } from "@/constants/generation-limits";
+import {
+  normalizeClipCount,
+  normalizeContentType,
+  normalizeLanguage,
+} from "@/constants/generation-limits";
 import { getCurrentSession } from "@/lib/auth-server";
 
 import { deleteUserAccount, upsertUserSettings } from "../server";
-
-const LANGUAGES = ["en", "ko"];
-const CONTENT_TYPES = ["talk", "cinematic"];
 
 interface UpdateGenerationDefaultsInput {
   language: string;
@@ -26,10 +27,8 @@ export async function updateGenerationDefaults(
   }
 
   await upsertUserSettings(session.user.id, {
-    language: LANGUAGES.includes(input.language) ? input.language : "en",
-    contentType: CONTENT_TYPES.includes(input.contentType)
-      ? input.contentType
-      : "talk",
+    language: normalizeLanguage(input.language),
+    contentType: normalizeContentType(input.contentType),
     clipCount: normalizeClipCount(input.clipCount),
     captionStyle: input.captionStyle,
   });

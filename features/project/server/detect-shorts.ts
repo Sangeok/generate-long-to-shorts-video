@@ -84,11 +84,41 @@ function buildPrompt(
   ].join("\n");
 }
 
+// Gemini responseSchema는 런타임 보장이 없으므로 경계에서 정규화한다.
+// 시간 필드가 비유한이면 해당 moment를 제외하고, seoScore는 0으로 대체한다.
+function normalizeMoments(value: unknown): ShortMoment[] {
+  if (!Array.isArray(value)) return [];
+  const moments: ShortMoment[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const raw = item as Partial<Record<keyof ShortMoment, unknown>>;
+    if (typeof raw.startSec !== "number" || !Number.isFinite(raw.startSec)) {
+      continue;
+    }
+    if (typeof raw.endSec !== "number" || !Number.isFinite(raw.endSec)) {
+      continue;
+    }
+    moments.push({
+      title: String(raw.title ?? "").trim(),
+      startSec: raw.startSec,
+      endSec: raw.endSec,
+      reason: String(raw.reason ?? "").trim(),
+      seoScore:
+        typeof raw.seoScore === "number" && Number.isFinite(raw.seoScore)
+          ? raw.seoScore
+          : 0,
+    });
+  }
+  return moments;
+}
+
 export function clampMoments(
-  moments: ShortMoment[],
+  moments: unknown,
   config: ShortsConfig,
 ): ShortMoment[] {
-  const sorted = [...moments].sort((a, b) => a.startSec - b.startSec);
+  const sorted = normalizeMoments(moments).sort(
+    (a, b) => a.startSec - b.startSec,
+  );
   const accepted: ShortMoment[] = [];
 
   for (const moment of sorted) {
@@ -104,10 +134,10 @@ export function clampMoments(
     if (!withinBounds || overlapsPrevious) continue;
 
     accepted.push({
-      title: moment.title.trim(),
+      title: moment.title,
       startSec: start,
       endSec: end,
-      reason: moment.reason.trim(),
+      reason: moment.reason,
       seoScore: Math.max(0, Math.min(100, Math.round(moment.seoScore))),
     });
   }
@@ -156,6 +186,6 @@ export async function detectShorts(
     throw new Error("Gemini returned an empty shorts response");
   }
 
-  const moments = clampMoments(JSON.parse(raw) as ShortMoment[], config);
+  const moments = clampMoments(JSON.parse(raw), config);
   return toShortClips(moments, segments);
 }

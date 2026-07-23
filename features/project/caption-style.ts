@@ -157,34 +157,35 @@ export function buildAssStyle(style: CaptionStyle): string {
   const position = CAPTION_POSITIONS[style.position];
   const primary = toAssColor(style.textColor);
   const outline = toAssColor(style.edgeColor);
-  const values = [
-    "Default",
-    CAPTION_FONTS[style.font].ass,
-    toAssFontSize(CAPTION_SIZES[style.size].cqw),
-    primary,
-    primary, // SecondaryColour (unused) mirrors PrimaryColour
-    outline,
-    outline, // BackColour
-    -1, // Bold (ASS true)
-    0, // Italic
-    0, // Underline
-    0, // StrikeOut
-    100, // ScaleX
-    100, // ScaleY
-    0, // Spacing
-    0, // Angle
-    style.edge === "box" ? 3 : 1, // BorderStyle
-    2, // Outline
-    0, // Shadow
-    position.alignment,
-    ASS_MARGIN_LR, // MarginL
-    ASS_MARGIN_LR, // MarginR
-    position.marginV,
-    1, // Encoding (default charset)
+  // 필드명과 값을 한 쌍으로 묶어 Format 행과 Style 행이 어긋날 수 없게 한다.
+  const fields: [name: string, value: string | number][] = [
+    ["Name", "Default"],
+    ["Fontname", CAPTION_FONTS[style.font].ass],
+    ["Fontsize", toAssFontSize(CAPTION_SIZES[style.size].cqw)],
+    ["PrimaryColour", primary],
+    ["SecondaryColour", primary], // unused, mirrors PrimaryColour
+    ["OutlineColour", outline],
+    ["BackColour", outline],
+    ["Bold", -1], // ASS true
+    ["Italic", 0],
+    ["Underline", 0],
+    ["StrikeOut", 0],
+    ["ScaleX", 100],
+    ["ScaleY", 100],
+    ["Spacing", 0],
+    ["Angle", 0],
+    ["BorderStyle", style.edge === "box" ? 3 : 1],
+    ["Outline", 2],
+    ["Shadow", 0],
+    ["Alignment", position.alignment],
+    ["MarginL", ASS_MARGIN_LR],
+    ["MarginR", ASS_MARGIN_LR],
+    ["MarginV", position.marginV],
+    ["Encoding", 1], // default charset
   ];
   return [
-    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    `Style: ${values.join(",")}`,
+    `Format: ${fields.map(([name]) => name).join(", ")}`,
+    `Style: ${fields.map(([, value]) => value).join(",")}`,
   ].join("\n");
 }
 

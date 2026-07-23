@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { updateShortCaptions } from "../../actions";
 import { ClipNotReadyError, getClipUrl } from "../../api/get-clip-url";
 import { isSameCaptionStyle } from "../../caption-style";
+import { formatTimecode } from "../../format";
 import type { CaptionSegment, CaptionStyle } from "../../types";
 import { CaptionStyleControls } from "./caption-style-controls";
 import { ClipPlayer } from "./clip-player";
@@ -37,13 +38,6 @@ interface CaptionEditorProps {
   captionStyle: CaptionStyle;
 }
 
-function formatTimecode(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 function sameCues(a: DraftCue[], b: DraftCue[]): boolean {
   if (a.length !== b.length) return false;
   return a.every(
@@ -67,9 +61,9 @@ export const CaptionEditor = ({
   const [savedCues, setSavedCues] = useState<DraftCue[]>(cues);
   const [style, setStyle] = useState(captionStyle);
   const [savedStyle, setSavedStyle] = useState(captionStyle);
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [clipUrl, setClipUrl] = useState<string | null>(null);
-  const [clipFailed, setClipFailed] = useState(false);
+  const [isClipFailed, setIsClipFailed] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
@@ -88,7 +82,7 @@ export const CaptionEditor = ({
         if (error instanceof ClipNotReadyError) {
           timer = setTimeout(loadClip, CLIP_POLL_INTERVAL_MS);
         } else {
-          setClipFailed(true);
+          setIsClipFailed(true);
         }
       }
     };
@@ -110,7 +104,7 @@ export const CaptionEditor = ({
   const activeId = cues.find(
     (cue) => currentTime >= cue.start && currentTime < cue.end,
   )?.id;
-  const dirty =
+  const isDirty =
     !sameCues(cues, savedCues) || !isSameCaptionStyle(style, savedStyle);
 
   const handleTextChange = (id: string, value: string) => {
@@ -120,11 +114,18 @@ export const CaptionEditor = ({
   };
 
   const handleTimeChange = (id: string, field: "start" | "end", value: number) => {
+    // 빈/비정상 입력(NaN)은 무시해 서버가 버릴 큐가 로컬에 남지 않게 한다.
+    if (!Number.isFinite(value)) return;
     setCues((prev) =>
       prev.map((cue) =>
         cue.id === id ? { ...cue, [field]: Math.max(0, value) } : cue,
       ),
     );
+  };
+
+  const registerTextarea = (id: string, el: HTMLTextAreaElement | null) => {
+    if (el) textareaRefs.current.set(id, el);
+    else textareaRefs.current.delete(id);
   };
 
   const handleSeek = (cue: DraftCue) => {
@@ -164,7 +165,7 @@ export const CaptionEditor = ({
   };
 
   const handleSave = async () => {
-    if (!dirty || saving) return;
+    if (!isDirty || isSaving) return;
 
     const sanitized = cues
       .map((cue) => ({ ...cue, text: cue.text.trim() }))
@@ -176,7 +177,7 @@ export const CaptionEditor = ({
       return;
     }
 
-    setSaving(true);
+    setIsSaving(true);
     try {
       await updateShortCaptions(
         shortId,
@@ -190,7 +191,7 @@ export const CaptionEditor = ({
     } catch {
       toast.error("Couldn't save captions. Please try again.");
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -205,7 +206,7 @@ export const CaptionEditor = ({
             videoRef={videoRef}
             onTimeChange={setCurrentTime}
           />
-        ) : clipFailed ? (
+        ) : isClipFailed ? (
           <div className="grid size-full place-items-center px-6 text-center text-sm text-muted-foreground">
             Couldn&apos;t load the clip preview.
           </div>
@@ -222,9 +223,9 @@ export const CaptionEditor = ({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <p className="eyebrow">Captions</p>
-          <Button onClick={handleSave} disabled={!dirty || saving} size="sm">
-            {saving && <Loader2 className="animate-spin" />}
-            {dirty ? "Save changes" : "Saved"}
+          <Button onClick={handleSave} disabled={!isDirty || isSaving} size="sm">
+            {isSaving && <Loader2 className="animate-spin" />}
+            {isDirty ? "Save changes" : "Saved"}
           </Button>
         </div>
 
@@ -244,72 +245,101 @@ export const CaptionEditor = ({
 
         <ul className="flex flex-col gap-2">
           {cues.map((cue) => (
-            <li
+            <CueRow
               key={cue.id}
-              className={cn(
-                "flex flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-colors",
-                cue.id === activeId && "border-primary/60",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSeek(cue)}
-                  title="Seek to start"
-                  className="text-muted-foreground transition-colors hover:text-primary"
-                >
-                  <Play className="size-3.5" />
-                </button>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={Number(cue.start.toFixed(2))}
-                  onChange={(event) =>
-                    handleTimeChange(cue.id, "start", Number(event.target.value))
-                  }
-                  aria-label="Start time (seconds)"
-                  className="w-16 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[0.7rem] tabular-nums"
-                />
-                <span className="text-xs text-muted-foreground">–</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={Number(cue.end.toFixed(2))}
-                  onChange={(event) =>
-                    handleTimeChange(cue.id, "end", Number(event.target.value))
-                  }
-                  aria-label="End time (seconds)"
-                  className="w-16 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[0.7rem] tabular-nums"
-                />
-                <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-muted-foreground">
-                  {formatTimecode(cue.start)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(cue.id)}
-                  title="Delete caption"
-                  className="ml-auto text-muted-foreground transition-colors hover:text-destructive"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-              <Textarea
-                ref={(el) => {
-                  if (el) textareaRefs.current.set(cue.id, el);
-                  else textareaRefs.current.delete(cue.id);
-                }}
-                value={cue.text}
-                onChange={(event) => handleTextChange(cue.id, event.target.value)}
-                rows={2}
-                placeholder="Caption text…"
-                className="min-h-0 resize-none"
-              />
-            </li>
+              cue={cue}
+              isActive={cue.id === activeId}
+              onSeek={handleSeek}
+              onTimeChange={handleTimeChange}
+              onTextChange={handleTextChange}
+              onDelete={handleDelete}
+              registerTextarea={registerTextarea}
+            />
           ))}
         </ul>
       </div>
     </div>
+  );
+};
+
+interface CueRowProps {
+  cue: DraftCue;
+  isActive: boolean;
+  onSeek: (cue: DraftCue) => void;
+  onTimeChange: (id: string, field: "start" | "end", value: number) => void;
+  onTextChange: (id: string, value: string) => void;
+  onDelete: (id: string) => void;
+  registerTextarea: (id: string, el: HTMLTextAreaElement | null) => void;
+}
+
+const CueRow = ({
+  cue,
+  isActive,
+  onSeek,
+  onTimeChange,
+  onTextChange,
+  onDelete,
+  registerTextarea,
+}: CueRowProps) => {
+  return (
+    <li
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-colors",
+        isActive && "border-primary/60",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onSeek(cue)}
+          title="Seek to start"
+          className="text-muted-foreground transition-colors hover:text-primary"
+        >
+          <Play className="size-3.5" />
+        </button>
+        <input
+          type="number"
+          min={0}
+          step={0.1}
+          value={Number(cue.start.toFixed(2))}
+          onChange={(event) =>
+            onTimeChange(cue.id, "start", Number(event.target.value))
+          }
+          aria-label="Start time (seconds)"
+          className="w-16 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[0.7rem] tabular-nums"
+        />
+        <span className="text-xs text-muted-foreground">–</span>
+        <input
+          type="number"
+          min={0}
+          step={0.1}
+          value={Number(cue.end.toFixed(2))}
+          onChange={(event) =>
+            onTimeChange(cue.id, "end", Number(event.target.value))
+          }
+          aria-label="End time (seconds)"
+          className="w-16 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[0.7rem] tabular-nums"
+        />
+        <span className="font-mono text-[0.625rem] uppercase tracking-[0.16em] text-muted-foreground">
+          {formatTimecode(cue.start)}
+        </span>
+        <button
+          type="button"
+          onClick={() => onDelete(cue.id)}
+          title="Delete caption"
+          className="ml-auto text-muted-foreground transition-colors hover:text-destructive"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+      <Textarea
+        ref={(el) => registerTextarea(cue.id, el)}
+        value={cue.text}
+        onChange={(event) => onTextChange(cue.id, event.target.value)}
+        rows={2}
+        placeholder="Caption text…"
+        className="min-h-0 resize-none"
+      />
+    </li>
   );
 };

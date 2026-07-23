@@ -1,4 +1,4 @@
-import type { ProjectStatus, VideoMetaRejection } from "./types";
+import type { VideoMetaRejection } from "./types";
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 export const MAX_VIDEO_DURATION_SEC = 4 * 60 * 60; // 영화 길이 수용 상한
@@ -7,14 +7,6 @@ export const MIN_VIDEO_ASPECT_RATIO = 1.25;
 export const MAX_ACTIVE_PROJECTS = 2;
 export const MAX_DAILY_PROJECTS = 10;
 export const DAILY_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-// 종료 상태(completed/failed)를 제외한 진행 중 상태.
-export const ACTIVE_PROJECT_STATUSES: ProjectStatus[] = [
-  "uploaded",
-  "transcribing",
-  "transcribed",
-  "generating_shorts",
-];
 
 function isFinitePositive(value: number | null): value is number {
   return value !== null && Number.isFinite(value) && value > 0;

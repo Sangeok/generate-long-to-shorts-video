@@ -1,3 +1,4 @@
+import { formatTimecode } from "../../format";
 import type { CaptionSegment } from "../../types";
 
 interface TranscriptPreviewProps {
@@ -5,13 +6,6 @@ interface TranscriptPreviewProps {
 }
 
 const PREVIEW_LIMIT = 12;
-
-function formatTimecode(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
 
 export const TranscriptPreview = ({ segments }: TranscriptPreviewProps) => {
   if (segments.length === 0) {

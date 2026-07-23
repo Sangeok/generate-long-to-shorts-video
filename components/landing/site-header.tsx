@@ -81,10 +81,10 @@ export function SiteHeader({
   desktopAuthActions,
   mobileAuthActions,
 }: SiteHeaderProps) {
-  const [scrolled, setScrolled] = React.useState(false);
+  const [isScrolled, setIsScrolled] = React.useState(false);
 
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setIsScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -94,7 +94,7 @@ export function SiteHeader({
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-colors duration-300",
-        scrolled
+        isScrolled
           ? "border-b border-border bg-background/80 backdrop-blur-md"
           : "border-b border-transparent",
       )}
